@@ -1,0 +1,3200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Safe Nepal — Tourist Safety System</title>
+
+<!-- Leaflet CSS & JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Turf.js -->
+<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --primary: #1C4620;
+    --primary-light: #2E7D32;
+    --primary-dark: #0D2812;
+    --cream: #D1CD9F;
+    --bg: #F4F6F0;
+    --white: #FFFFFF;
+    --text: #1A1A1A;
+    --text-secondary: #4B5563;
+    --border: #E5E7EB;
+    --shadow: 0 4px 20px rgba(0,0,0,0.08);
+    --radius: 12px;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --red: #C62828;
+    --gold: #F9A825;
+    --blue: #1565C0;
+    --purple: #6A1B9A;
+    --orange: #F57F17;
+}
+
+html { scroll-behavior: smooth; }
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ─── SPLASH ─── */
+#splash {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(145deg, var(--primary-dark), var(--primary));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    transition: opacity 0.8s ease;
+}
+#splash.gone { opacity: 0; pointer-events: none; }
+.splash-logo { 
+    width: 120px; 
+    height: 120px; 
+    border-radius: 50%; 
+    overflow: hidden;
+    margin-bottom: 16px; 
+    animation: pulse 1.5s ease-in-out infinite;
+    box-shadow: 0 0 40px rgba(255,255,255,0.15);
+    border: 4px solid var(--white);
+}
+.splash-logo img { width: 100%; height: 100%; object-fit: cover; }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+.splash-title { color: var(--white); font-size: 2.5rem; font-weight: 800; letter-spacing: 3px; font-family: 'Inter', sans-serif; }
+.splash-sub { color: var(--cream); font-size: 0.9rem; letter-spacing: 1.5px; margin-top: 8px; font-weight: 300; font-family: 'Inter', sans-serif; }
+.splash-loader { width: 40px; height: 40px; border: 3px solid rgba(209,205,159,0.2); border-top-color: var(--cream); border-radius: 50%; animation: spin 0.9s linear infinite; margin-top: 28px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── NAVBAR ─── */
+nav {
+    background: var(--primary);
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 60px;
+    flex-shrink: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    position: sticky;
+    top: 0;
+}
+.nav-brand { display: flex; align-items: center; gap: 12px; }
+.nav-logo { 
+    width: 38px; 
+    height: 38px; 
+    border-radius: 50%; 
+    overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.3);
+    flex-shrink: 0;
+}
+.nav-logo img { width: 100%; height: 100%; object-fit: cover; }
+.nav-title { font-size: 1.3rem; font-weight: 800; letter-spacing: 2px; font-family: 'Inter', sans-serif; }
+.nav-sub { font-size: 0.7rem; opacity: 0.7; font-weight: 300; letter-spacing: 0.5px; font-family: 'Inter', sans-serif; }
+.nav-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.nav-tab {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: var(--white);
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: var(--transition);
+    font-family: 'Inter', sans-serif;
+}
+.nav-tab:hover { background: rgba(255,255,255,0.2); }
+.nav-tab.active { background: rgba(255,255,255,0.25); }
+.nav-count { background: var(--cream); color: var(--primary); font-size: 0.7rem; font-weight: 700; padding: 1px 8px; border-radius: 12px; margin-left: 6px; font-family: 'Inter', sans-serif; }
+
+/* ─── HERO ─── */
+.hero-section {
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary), var(--primary-light));
+    padding: 30px 24px;
+    text-align: center;
+    color: var(--white);
+    border-bottom: 4px solid var(--cream);
+}
+.hero-logo {
+    display: inline-block;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-bottom: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    border: 3px solid rgba(255,255,255,0.3);
+}
+.hero-logo img { width: 100%; height: 100%; object-fit: cover; }
+.hero-title { font-size: 2rem; font-weight: 800; letter-spacing: 2px; font-family: 'Inter', sans-serif; }
+.hero-title span { color: var(--cream); }
+.hero-sub { font-size: 0.95rem; font-weight: 300; opacity: 0.9; margin-top: 8px; max-width: 750px; margin-left: auto; margin-right: auto; line-height: 1.8; font-family: 'Inter', sans-serif; }
+.hero-badges { display: flex; gap: 12px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+.hero-badge { background: rgba(255,255,255,0.12); padding: 5px 14px; border-radius: 20px; font-size: 0.7rem; font-weight: 500; border: 1px solid rgba(255,255,255,0.1); font-family: 'Inter', sans-serif; }
+.hero-badge strong { color: var(--cream); }
+
+/* ─── VIDEO LINK ─── */
+.video-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 8px 20px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 8px;
+    color: var(--white);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.85rem;
+    border: 1px solid rgba(255,255,255,0.2);
+    transition: var(--transition);
+    font-family: 'Inter', sans-serif;
+}
+.video-link:hover { background: rgba(255,255,255,0.25); transform: translateY(-2px); }
+
+/* ─── APP LAYOUT ─── */
+.app-body {
+    display: flex;
+    flex: 1;
+    height: calc(100vh - 60px);
+    overflow: hidden;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+    width: 480px;
+    background: var(--white);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 2px 0 12px rgba(0,0,0,0.04);
+}
+
+/* Base Map Selector - 4 Maps only */
+.base-map-selector {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    background: #FAFBFA;
+}
+.map-btn {
+    flex: 1;
+    min-width: 60px;
+    padding: 6px 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    transition: var(--transition);
+    font-family: 'Inter', sans-serif;
+    text-align: center;
+}
+.map-btn:hover { background: #E8F5E9; border-color: var(--primary-light); }
+.map-btn.active { background: var(--primary); color: var(--white); border-color: var(--primary); }
+
+/* ─── MAIN FEATURE BUTTONS ─── */
+.feature-buttons {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    background: #FAFBFA;
+}
+.feature-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 2 rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--white);
+    transition: var(--transition);
+    font-family: 'Inter', sans-serif;
+    text-align: center;
+}
+.feature-btn:hover { background: #E8F5E9; border-color: var(--primary-light); }
+.feature-btn.active { background: var(--primary); color: var(--white); border-color: var(--primary); }
+.feature-btn .icon { display: block; font-size: 1.2rem; margin-bottom: 2px; }
+
+/* ─── EXPLORE SECTION ─── */
+.explore-section {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    background: #FAFBFA;
+    display: none;
+}
+.explore-section.active { display: block; }
+.explore-title {
+    font-size: 2 rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    font-family: 'Inter', sans-serif;
+}
+.explore-subtitle {
+    font-size: 0.5rem !important;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    font-style: italic;
+    font-family: 'Inter', sans-serif;
+}
+.explore-btn {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--white);
+    cursor: pointer;
+    font-size: 0.8 rem;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    transition: var(--transition);
+    margin: 2px;
+}
+.explore-btn:hover { background: #E8F5E9; border-color: var(--primary-light); }
+
+/* ─── ADMIN BOUNDARY LAYERS ─── */
+.admin-layers {
+    display: flex;
+    gap: 6px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    background: #FAFBFA;
+    align-items: center;
+}
+.admin-layers-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    width: 100%;
+    margin-bottom: 1px;
+    font-family: 'Inter', sans-serif;
+}
+.layer-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+    user-select: none;
+    font-family: 'Inter', sans-serif;
+}
+.layer-chip:hover { border-color: var(--primary-light); color: var(--primary); }
+.layer-chip input { accent-color: var(--primary); cursor: pointer; width: 13px; height: 13px; }
+.layer-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* ─── SPATIAL TOOLS SECTION ─── */
+.spatial-section {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    background: #FAFBFA;
+    display: none;
+}
+.spatial-section.active { display: block; }
+.spatial-tools {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+.spatial-btn {
+    flex: 1;
+    min-width: 60px;
+    padding: 6px 8px;
+    background: var(--white);
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    transition: var(--transition);
+    font-family: 'Inter', sans-serif;
+    text-align: center;
+}
+.spatial-btn:hover { background: #E3F2FD; border-color: var(--blue); }
+.spatial-btn.active { background: var(--blue); color: var(--white); border-color: var(--blue); }
+.spatial-btn .icon { display: block; font-size: 1.1rem; }
+
+.spatial-info {
+    padding: 8px 12px;
+    background: #E3F2FD;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    display: none;
+    font-family: 'Inter', sans-serif;
+}
+.spatial-info.show { display: block; }
+.spatial-info .tool-title { font-weight: 700; color: var(--blue); }
+.spatial-info .tool-result { font-weight: 700; color: var(--primary); font-size: 0.9rem; }
+
+/* Search Box */
+.search-box {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    position: relative;
+    background: #FAFBFA;
+}
+.search-box input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    transition: var(--transition);
+    background: var(--white);
+}
+.search-box input:focus { border-color: var(--primary-light); box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.1); }
+#searchDropdown {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: 50px;
+    background: var(--white);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    z-index: 600;
+    display: none;
+    max-height: 300px;
+    overflow-y: auto;
+}
+.search-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-family: 'Inter', sans-serif;
+    border-bottom: 1px solid var(--bg);
+    transition: var(--transition);
+}
+.search-item:hover { background: #E8F5E9; color: var(--primary); }
+.search-item:last-child { border-bottom: none; }
+.search-item .sub-text { font-size: 0.7rem; color: var(--text-secondary); display: block; }
+
+/* ─── STEP PROGRESS ─── */
+.step-progress {
+    display: flex;
+    padding: 10px 16px;
+    background: #FAFBFA;
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+    flex-shrink: 0;
+}
+.step-dot {
+    flex: 1;
+    height: 4px;
+    border-radius: 4px;
+    background: var(--border);
+    transition: var(--transition);
+}
+.step-dot.active { background: var(--primary-light); }
+.step-dot.completed { background: var(--primary); }
+
+/* ─── TAB BAR ─── */
+.tab-bar {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.tab-btn {
+    flex: 1;
+    padding: 10px 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 3px solid transparent;
+    transition: var(--transition);
+    font-family: 'Inter', sans-serif;
+}
+.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); background: #E8F5E9; }
+
+/* ─── FORM WIZARD ─── */
+.form-wrap {
+    padding: 16px 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+.form-step { display: none; animation: fadeIn 0.4s ease; }
+.form-step.active { display: block; }
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.step-title { font-size: 1.1rem; font-weight: 700; color: var(--primary); margin-bottom: 4px; font-family: 'Inter', sans-serif; }
+.step-sub { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 14px; font-family: 'Inter', sans-serif; }
+.form-group { margin-bottom: 14px; }
+.form-label { font-size: 0.85rem; font-weight: 600; color: var(--text); display: block; margin-bottom: 5px; font-family: 'Inter', sans-serif; }
+.form-label .required { color: var(--red); margin-left: 2px; }
+.form-input, .form-textarea, .form-select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    transition: var(--transition);
+    background: var(--white);
+}
+.form-input:focus, .form-textarea:focus, .form-select:focus {
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.1);
+}
+.form-textarea { resize: vertical; min-height: 80px; }
+.coord-display { font-size: 0.8rem; color: var(--text-secondary); background: var(--bg); padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px dashed var(--border); font-family: 'Inter', sans-serif; }
+.form-hint { font-size: 0.75rem; color: var(--text-secondary); background: #E8F5E9; padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid var(--primary-light); font-family: 'Inter', sans-serif; }
+
+.type-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+.type-chip {
+    padding: 8px 10px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    text-align: center;
+    transition: var(--transition);
+    background: var(--white);
+    color: var(--text-secondary);
+    font-family: 'Inter', sans-serif;
+    user-select: none;
+}
+.type-chip:hover { background: #E8F5E9; border-color: var(--primary-light); }
+.type-chip.active { background: var(--primary); color: var(--white); border-color: var(--primary); }
+.type-chip .check { display: none; }
+.type-chip.active .check { display: inline; }
+
+.star-rating {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.star-btn {
+    font-size: 1.8rem;
+    cursor: pointer;
+    color: #D1D5DB;
+    transition: var(--transition);
+    background: none;
+    border: none;
+    padding: 0 4px;
+    font-family: 'Inter', sans-serif;
+}
+.star-btn:hover { transform: scale(1.15); }
+.star-btn.active { color: var(--gold); }
+.star-btn .star-text { font-size: 0.55rem; display: block; color: var(--text-secondary); font-weight: 500; font-family: 'Inter', sans-serif; }
+
+.safety-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.safety-btn {
+    padding: 10px 8px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: var(--transition);
+    background: var(--white);
+    font-family: 'Inter', sans-serif;
+}
+.safety-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.safety-btn.safe.active { background: #E8F5E9; border-color: #2E7D32; color: #2E7D32; }
+.safety-btn.moderate.active { background: #FFF8E1; border-color: var(--orange); color: var(--orange); }
+.safety-btn.danger.active { background: #FFEBEE; border-color: var(--red); color: var(--red); }
+
+.photo-zone {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    margin-bottom: 12px;
+}
+.photo-zone:hover { border-color: var(--primary-light); background: #E8F5E9; }
+.photo-zone input { display: none; }
+#photoPreviewWrap { margin-bottom: 12px; display: none; position: relative; }
+#photoPreviewWrap img { width: 100%; max-height: 150px; object-fit: cover; border-radius: 8px; border: 2px solid var(--border); cursor: pointer; transition: var(--transition); }
+.photo-preview-label { font-size: 0.7rem; color: var(--text-secondary); text-align: center; margin-top: 4px; font-family: 'Inter', sans-serif; }
+
+.step-nav {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
+.step-nav .btn-prev {
+    flex: 1;
+    padding: 10px;
+    background: var(--bg);
+    color: var(--text);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: var(--transition);
+    font-family: 'Inter', sans-serif;
+}
+.step-nav .btn-prev:hover { background: #E5E7EB; }
+.step-nav .btn-next {
+    flex: 2;
+    padding: 10px;
+    background: var(--primary);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: var(--transition);
+    font-family: 'Inter', sans-serif;
+}
+.step-nav .btn-next:hover { background: var(--primary-light); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(28, 70, 32, 0.3); }
+.step-nav .btn-submit {
+    flex: 2;
+    padding: 10px;
+    background: var(--primary);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 700;
+    transition: var(--transition);
+    font-family: 'Inter', sans-serif;
+}
+.step-nav .btn-submit:hover { background: var(--primary-light); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(28, 70, 32, 0.3); }
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 6px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.stat-card { background: var(--bg); border-radius: 8px; padding: 8px 6px; text-align: center; }
+.stat-val { font-size: 1.3rem; font-weight: 700; color: var(--primary); font-family: 'Inter', sans-serif; }
+.stat-lbl { font-size: 0.6rem; color: var(--text-secondary); font-family: 'Inter', sans-serif; }
+
+.list-toolbar {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+.list-toolbar button {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 2px solid var(--border);
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-weight: 600;
+    transition: var(--transition);
+    font-family: 'Inter', sans-serif;
+    background: var(--white);
+}
+.list-toolbar .dl-btn { background: var(--primary); color: var(--white); border-color: var(--primary); }
+.list-toolbar .dl-btn:hover { background: var(--primary-light); }
+.list-toolbar .filter-btn.active { background: var(--primary); color: var(--white); border-color: var(--primary); }
+.list-toolbar .filter-btn:hover { background: #E8F5E9; }
+
+.reports-wrap {
+    padding: 8px 10px;
+    overflow-y: auto;
+    flex: 1;
+}
+.report-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-left: 4px solid var(--border);
+    transition: box-shadow 0.2s;
+}
+.report-card.safe { border-left-color: #2E7D32; }
+.report-card.moderate { border-left-color: var(--orange); }
+.report-card.danger { border-left-color: var(--red); }
+
+.rc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 3px; }
+.rc-title { font-size: 0.85rem; font-weight: 700; font-family: 'Inter', sans-serif; }
+.rc-badge { font-size: 0.6rem; padding: 2px 8px; border-radius: 12px; font-weight: 700; font-family: 'Inter', sans-serif; }
+.badge-safe { background: #E8F5E9; color: #2E7D32; }
+.badge-moderate { background: #FFF8E1; color: var(--orange); }
+.badge-danger { background: #FFEBEE; color: var(--red); }
+
+.rc-meta { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 2px; font-family: 'Inter', sans-serif; }
+.rc-types { font-size: 0.7rem; color: var(--primary-light); margin-bottom: 2px; font-family: 'Inter', sans-serif; }
+.rc-stars { color: var(--gold); font-size: 0.8rem; }
+.rc-comment { font-size: 0.75rem; color: var(--text-secondary); font-style: italic; border-top: 1px solid var(--bg); padding-top: 4px; margin-top: 4px; font-family: 'Inter', sans-serif; }
+.rc-photo { width: 100%; max-height: 80px; object-fit: cover; border-radius: 6px; margin-top: 4px; border: 1px solid var(--border); cursor: pointer; transition: var(--transition); }
+.rc-actions { display: flex; gap: 4px; margin-top: 6px; }
+.rc-actions button { padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.7rem; font-weight: 600; font-family: 'Inter', sans-serif; transition: var(--transition); }
+.rc-fly { flex: 1; background: #E8F5E9; color: var(--primary); }
+.rc-fly:hover { background: #C8E6C9; }
+.rc-del { background: #FFEBEE; color: var(--red); }
+.rc-del:hover { background: #FFCDD2; }
+
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-secondary); font-family: 'Inter', sans-serif; }
+.empty-state .ei { font-size: 3rem; margin-bottom: 10px; }
+
+.map-area {
+    flex: 1;
+    position: relative;
+}
+#map { width: 100%; height: 100%; }
+.map-hint {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(28, 70, 32, 0.9);
+    color: var(--cream);
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    z-index: 500;
+    pointer-events: none;
+    white-space: nowrap;
+    transition: opacity 0.5s;
+    font-weight: 300;
+    font-family: 'Inter', sans-serif;
+}
+.map-hint.hide { opacity: 0; }
+
+.map-legend {
+    position: absolute;
+    bottom: 80px;
+    right: 12px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    z-index: 500;
+    box-shadow: var(--shadow);
+}
+.legend-title { font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; font-family: 'Inter', sans-serif; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; margin-bottom: 2px; font-family: 'Inter', sans-serif; }
+.leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+.statusbar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid var(--border);
+    padding: 4px 14px;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    z-index: 400;
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Inter', sans-serif;
+}
+
+.toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--primary);
+    color: var(--white);
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    z-index: 8000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+}
+.toast.show { opacity: 1; }
+
+.photo-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 9000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.photo-lightbox.show { display: flex; }
+.photo-lightbox img { max-width: 90%; max-height: 90%; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); animation: zoomIn 0.3s ease; }
+@keyframes zoomIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.photo-lightbox .close { position: absolute; top: 20px; right: 30px; color: var(--white); font-size: 2.5rem; cursor: pointer; transition: var(--transition); }
+.photo-lightbox .close:hover { transform: rotate(90deg); }
+
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(4px);
+    z-index: 7000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+.confirm-overlay.show { display: flex; }
+.confirm-box {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 28px 32px;
+    width: 340px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.confirm-box h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; color: var(--red); font-family: 'Inter', sans-serif; }
+.confirm-box p { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 20px; font-family: 'Inter', sans-serif; }
+.confirm-actions { display: flex; gap: 10px; }
+.confirm-actions button { flex: 1; padding: 10px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600; border: none; font-family: 'Inter', sans-serif; transition: var(--transition); }
+.btn-confirm-del { background: var(--red); color: var(--white); }
+.btn-confirm-del:hover { background: #B71C1C; }
+.btn-confirm-cancel { background: var(--bg); color: var(--text); border: 2px solid var(--border) !important; }
+.btn-confirm-cancel:hover { background: #E5E7EB; }
+
+#aboutPage { animation: fadeIn 0.4s ease; }
+#recordsPage { animation: fadeIn 0.4s ease; }
+
+@media (max-width: 768px) {
+    .sidebar { width: 100%; max-height: 50vh; }
+    .app-body { flex-direction: column; height: auto; }
+    .map-area { flex: 1; min-height: 50vh; height: 50vh; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .nav-sub { display: none; }
+    .nav-title { font-size: 1rem; }
+    .hero-title { font-size: 1.4rem; }
+    .star-btn { font-size: 1.4rem; }
+    .nav-tabs { gap: 3px; }
+    .nav-tab { padding: 6px 10px; font-size: 0.7rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ─── SPLASH ─── -->
+<div id="splash">
+    <div class="splash-logo">
+        <img src="logo.png" alt="Safe Nepal Logo">
+    </div>
+    <div class="splash-title">Safe Nepal</div>
+    <div class="splash-sub">Tourist Safety &amp; Spatial Analysis System</div>
+    <div class="splash-loader"></div>
+</div>
+
+<!-- ─── NAVBAR ─── -->
+<nav>
+    <div class="nav-brand">
+        <div class="nav-logo">
+            <img src="logo.png" alt="Safe Nepal">
+        </div>
+        <div>
+            <div class="nav-title">Safe Nepal</div>
+            <div class="nav-sub">Nepal · 77 Districts · Spatial Analysis</div>
+        </div>
+    </div>
+    <div class="nav-tabs">
+        <button class="nav-tab active" id="navForm" onclick="switchTab('form')">📍 Report</button>
+        <button class="nav-tab" id="navList" onclick="openRecords()">📋 Records</button>
+        <button class="nav-tab" id="navRoute" onclick="openRoutePanel()">🗺️ Routes</button>
+        <button class="nav-tab" onclick="openAbout()">ℹ️ About</button>
+    </div>
+</nav>
+
+<!-- ─── HERO ─── -->
+<section class="hero-section">
+    <div class="hero-logo">
+        <img src="logo.png" alt="Safe Nepal">
+    </div>
+    <div class="hero-title">🇳🇵 <span>Safe Nepal</span> — Tourism Safety & Spatial Analysis</div>
+    <div class="hero-sub">
+        A community-driven platform with <strong>GIS spatial analysis tools</strong> for tourists and locals.
+        Report safety concerns, analyze spatial patterns, and make informed decisions across all <strong>77 districts of Nepal</strong>.
+    </div>
+    <div class="hero-badges">
+        <span class="hero-badge">📍 <strong>77</strong> Districts</span>
+        <span class="hero-badge">📏 <strong>4</strong> Spatial Tools</span>
+        <span class="hero-badge">🗺️ <strong>4</strong> Base Maps</span>
+        <span class="hero-badge">📊 <strong>Real-time</strong> Reports</span>
+        <span class="hero-badge">⭐ <strong>Community</strong> Driven</span>
+    </div>
+    <!-- VIDEO URL ADDED HERE -->
+    <a href="https://www.youtube.com/watch?v=YOUR_VIDEO_ID" target="_blank" class="video-link">
+        ▶️ Watch Tutorial Video
+    </a>
+</section>
+
+<!-- ─── ABOUT PAGE ─── -->
+<div id="aboutPage" style="display:none; position:fixed; inset:0; z-index:9999; background:var(--bg); overflow-y:auto; padding:40px 24px;">
+    <div style="max-width:1000px; margin:0 auto;">
+        <button onclick="closeAbout()" style="position:sticky; top:0; float:right; background:var(--primary); color:var(--white); border:none; border-radius:50%; width:48px; height:48px; font-size:1.6rem; cursor:pointer; font-family:'Inter',sans-serif; transition:all 0.3s; box-shadow:0 4px 20px rgba(0,0,0,0.15); z-index:10;">
+            ✕
+        </button>
+        <div style="text-align:center; margin-bottom:32px; padding-top:10px;">
+            <div style="width:100px; height:100px; border-radius:50%; overflow:hidden; margin:0 auto 8px; border:4px solid var(--primary); box-shadow:var(--shadow);">
+                <img src="logo.png" alt="Safe Nepal" style="width:100%;height:100%;object-fit:cover;">
+            </div>
+            <h1 style="font-size:2.8rem; font-weight:800; color:var(--primary); letter-spacing:2px; font-family:'Inter',sans-serif;">Safe Nepal</h1>
+            <p style="font-size:1.1rem; color:var(--text-secondary); margin-top:4px; font-family:'Inter',sans-serif; font-weight:300; letter-spacing:1px;">Mapping Accountability Across Nepal</p>
+        </div>
+
+        <div style="background:var(--white); border-radius:var(--radius); padding:28px 32px; margin-bottom:24px; box-shadow:var(--shadow); border-left:5px solid var(--primary);">
+            <h2 style="font-size:1.2rem; font-weight:700; color:var(--primary); margin-bottom:12px; font-family:'Inter',sans-serif;">📖 About Safe Nepal</h2>
+            <p style="font-size:0.95rem; line-height:1.9; color:var(--text-secondary); font-family:'Inter',sans-serif;">
+                <strong>Safe Nepal</strong> is an interactive web-based GIS platform designed to bridge the gap between public grievances and government authorities through location-based reporting. The platform empowers both <strong>tourists</strong> and <strong>local residents</strong> to report safety concerns, infrastructure issues, and travel-related problems by pinning exact coordinates on an interactive map.
+            </p>
+        </div>
+
+        <div style="background:var(--white); border-radius:var(--radius); padding:28px 32px; margin-bottom:24px; box-shadow:var(--shadow);">
+            <h2 style="font-size:1.2rem; font-weight:700; color:var(--primary); margin-bottom:12px; font-family:'Inter',sans-serif;">🎯 Purpose</h2>
+            <p style="font-size:0.95rem; line-height:1.9; color:var(--text-secondary); font-family:'Inter',sans-serif;">
+                The purpose of Safe Nepal is to transform traditional text-based complaint systems into a <strong>visual, location-specific, and action-oriented platform</strong>. By integrating geospatial technology, the platform enables authorities—including municipal governments (Palikas), Hello Sarkar, and the Tourist Police Nepal—to quickly identify, prioritize, and address issues based on their geographic distribution across all <strong>77 districts of Nepal</strong>.
+            </p>
+        </div>
+
+        <div style="background:var(--white); border-radius:var(--radius); padding:28px 32px; margin-bottom:24px; box-shadow:var(--shadow);">
+            <h2 style="font-size:1.2rem; font-weight:700; color:var(--primary); margin-bottom:16px; font-family:'Inter',sans-serif;">👥 Target Audience</h2>
+            <p style="font-size:0.9rem; color:var(--text-secondary); margin-bottom:16px; font-family:'Inter',sans-serif;">
+                Safe Nepal serves <strong>two primary user groups</strong>:
+            </p>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div style="background:var(--bg); border-radius:var(--radius); padding:20px 24px; border-left:5px solid #2E7D32;">
+                    <div style="font-size:2rem; margin-bottom:6px;">🏠</div>
+                    <h3 style="font-size:1rem; font-weight:700; color:var(--primary); font-family:'Inter',sans-serif;">Locals (Citizen Grievance)</h3>
+                    <p style="font-size:0.85rem; color:var(--text-secondary); line-height:1.7; margin-top:6px; font-family:'Inter',sans-serif;">
+                        Residents can report potholes, illegal waste dumping, broken utility lines, and other civic issues directly on the map. These geo-tagged reports help local authorities visualize and respond to infrastructure needs efficiently.
+                    </p>
+                </div>
+                <div style="background:var(--bg); border-radius:var(--radius); padding:20px 24px; border-left:5px solid var(--blue);">
+                    <div style="font-size:2rem; margin-bottom:6px;">✈️</div>
+                    <h3 style="font-size:1rem; font-weight:700; color:var(--blue); font-family:'Inter',sans-serif;">Tourists (Travel Safety &amp; Support)</h3>
+                    <p style="font-size:0.85rem; color:var(--text-secondary); line-height:1.7; margin-top:6px; font-family:'Inter',sans-serif;">
+                        Travelers can report unlicensed guides, blocked trekking trails, safety emergencies, or scams. Reports are routed to relevant authorities including the <strong>Tourist Police Nepal</strong> (Bhrikutimandap Headquarter).
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div style="background:var(--white); border-radius:var(--radius); padding:28px 32px; margin-bottom:24px; box-shadow:var(--shadow);">
+            <h2 style="font-size:1.2rem; font-weight:700; color:var(--primary); margin-bottom:12px; font-family:'Inter',sans-serif;">🛠️ Technology Stack</h2>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); gap:12px; margin-top:16px;">
+                <div style="background:var(--bg); border-radius:10px; padding:16px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:2rem;">🗺️</div>
+                    <div style="font-weight:600; font-size:0.8rem; color:var(--text); font-family:'Inter',sans-serif;">Leaflet.js</div>
+                </div>
+                <div style="background:var(--bg); border-radius:10px; padding:16px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:2rem;">📐</div>
+                    <div style="font-weight:600; font-size:0.8rem; color:var(--text); font-family:'Inter',sans-serif;">Turf.js</div>
+                </div>
+                <div style="background:var(--bg); border-radius:10px; padding:16px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:2rem;">⚡</div>
+                    <div style="font-weight:600; font-size:0.8rem; color:var(--text); font-family:'Inter',sans-serif;">Node.js</div>
+                </div>
+                <div style="background:var(--bg); border-radius:10px; padding:16px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:2rem;">📊</div>
+                    <div style="font-weight:600; font-size:0.8rem; color:var(--text); font-family:'Inter',sans-serif;">JSON</div>
+                </div>
+                <div style="background:var(--bg); border-radius:10px; padding:16px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:2rem;">🎨</div>
+                    <div style="font-weight:600; font-size:0.8rem; color:var(--text); font-family:'Inter',sans-serif;">HTML/CSS/JS</div>
+                </div>
+                <div style="background:var(--bg); border-radius:10px; padding:16px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:2rem;">🗺️</div>
+                    <div style="font-weight:600; font-size:0.8rem; color:var(--text); font-family:'Inter',sans-serif;">OSRM Routing</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="background:var(--white); border-radius:var(--radius); padding:28px 32px; margin-bottom:24px; box-shadow:var(--shadow);">
+            <h2 style="font-size:1.2rem; font-weight:700; color:var(--primary); margin-bottom:12px; font-family:'Inter',sans-serif;">📍 Study Area</h2>
+            <p style="font-size:0.95rem; line-height:1.9; color:var(--text-secondary); font-family:'Inter',sans-serif;">
+                The platform covers all <strong style="color:var(--primary);">77 districts of Nepal</strong>, with detailed administrative boundaries and route planning features for major tourist destinations.
+            </p>
+        </div>
+
+        <div style="background:var(--white); border-radius:var(--radius); padding:28px 32px; margin-bottom:24px; box-shadow:var(--shadow);">
+            <h2 style="font-size:1.2rem; font-weight:700; color:var(--primary); margin-bottom:20px; text-align:center; font-family:'Inter',sans-serif;">👥 Meet Our Team</h2>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; max-width:600px; margin:0 auto;">
+                <div style="background:var(--bg); border-radius:var(--radius); padding:20px; text-align:center; border:2px solid var(--border);">
+                    <div style="width:120px; height:120px; border-radius:50%; margin:0 auto 12px; background:#E8F5E9; border:4px solid var(--primary); overflow:hidden;">
+                        <img src="sabina.png" alt="Sabina Neupane" style="width:100%;height:100%;object-fit:cover;">
+                    </div>
+                    <div style="font-weight:700; font-size:1.1rem; color:var(--text); font-family:'Inter',sans-serif;">Sabina Neupane</div>
+                    <div style="font-size:0.8rem; color:var(--primary-light); font-weight:500; font-family:'Inter',sans-serif;">GIS & Web Developer</div>
+                    <div style="font-size:0.7rem; color:var(--text-secondary); margin-top:4px; font-family:'Inter',sans-serif;">📍 Rasuwa, Nepal</div>
+                </div>
+                <div style="background:var(--bg); border-radius:var(--radius); padding:20px; text-align:center; border:2px solid var(--border);">
+                    <div style="width:120px; height:120px; border-radius:50%; margin:0 auto 12px; background:#E3F2FD; border:4px solid var(--blue); overflow:hidden;">
+                        <img src="dipesh.jpeg" alt="Dipesh Prajapati" style="width:100%;height:100%;object-fit:cover;">
+                    </div>
+                    <div style="font-weight:700; font-size:1.1rem; color:var(--text); font-family:'Inter',sans-serif;">Dipesh Prajapati</div>
+                    <div style="font-size:0.8rem; color:var(--blue); font-weight:500; font-family:'Inter',sans-serif;">GIS & Web Developer</div>
+                    <div style="font-size:0.7rem; color:var(--text-secondary); margin-top:4px; font-family:'Inter',sans-serif;">📍 Bhaktapur, Nepal</div>
+                </div>
+            </div>
+            <div style="text-align:center; margin-top:20px; padding-top:20px; border-top:1px solid var(--border);">
+                <p style="font-size:0.85rem; color:var(--text-secondary); font-family:'Inter',sans-serif;"><strong>Supervisor:</strong> Er. Suman Baral</p>
+                <p style="font-size:0.8rem; color:var(--text-secondary); margin-top:4px; font-family:'Inter',sans-serif;">Department of Geomatics Engineering, Kathmandu University</p>
+            </div>
+        </div>
+
+        <div style="background:linear-gradient(135deg, var(--primary-dark), var(--primary)); border-radius:var(--radius); padding:28px 32px; margin-bottom:24px; text-align:center; color:var(--white);">
+            <h2 style="font-size:1.2rem; font-weight:700; margin-bottom:8px; font-family:'Inter',sans-serif;">🌐 Conclusion</h2>
+            <p style="font-size:0.95rem; line-height:1.8; opacity:0.95; font-family:'Inter',sans-serif; max-width:700px; margin:0 auto;">
+                Safe Nepal aims to make public service delivery in Nepal <strong>faster, more transparent, and entirely visual</strong>. By giving every problem a geographic coordinate, we empower citizens and travelers to contribute to a <strong>safer, more accountable Nepal</strong>.
+            </p>
+            <div style="margin-top:14px; font-style:italic; font-size:1rem; color:var(--cream); font-family:'Inter',sans-serif; font-weight:300; letter-spacing:1px;">
+                "Mapping Accountability Across Nepal"
+            </div>
+        </div>
+
+        <div style="text-align:center; padding:16px 0; color:var(--text-secondary); font-size:0.8rem; font-family:'Inter',sans-serif;">
+            <p>© 2026 <strong style="color:var(--primary);">Safe Nepal</strong> — Mapping Accountability Across Nepal</p>
+            <p style="font-size:0.7rem; margin-top:4px; opacity:0.7;">Built with ❤️ for Tourists &amp; Locals</p>
+        </div>
+    </div>
+</div>
+
+<!-- ─── RECORDS PAGE ─── -->
+<div id="recordsPage" style="display:none; position:fixed; inset:0; z-index:9999; background:var(--bg); overflow-y:auto; padding:40px 24px;">
+    <div style="max-width:1000px; margin:0 auto;">
+        <button onclick="closeRecords()" style="position:sticky; top:0; float:right; background:var(--primary); color:var(--white); border:none; border-radius:50%; width:48px; height:48px; font-size:1.6rem; cursor:pointer; font-family:'Inter',sans-serif; transition:all 0.3s; box-shadow:0 4px 20px rgba(0,0,0,0.15); z-index:10;">
+            ✕
+        </button>
+        <div style="text-align:center; margin-bottom:32px; padding-top:10px;">
+            <div style="width:64px; height:64px; border-radius:50%; overflow:hidden; margin:0 auto 8px; border:3px solid var(--primary);">
+                <img src="logo.png" alt="Safe Nepal" style="width:100%;height:100%;object-fit:cover;">
+            </div>
+            <h1 style="font-size:2.5rem; font-weight:800; color:var(--primary); letter-spacing:2px; font-family:'Inter',sans-serif;">All Records</h1>
+            <p style="font-size:1rem; color:var(--text-secondary); margin-top:4px; font-family:'Inter',sans-serif; font-weight:300;">View and manage all submitted reports</p>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px;">
+            <div style="background:var(--white); border-radius:var(--radius); padding:16px; text-align:center; box-shadow:var(--shadow);">
+                <div style="font-size:1.8rem; font-weight:800; color:var(--primary);" id="rec-total">0</div>
+                <div style="font-size:0.7rem; color:var(--text-secondary); font-family:'Inter',sans-serif;">Total Records</div>
+            </div>
+            <div style="background:var(--white); border-radius:var(--radius); padding:16px; text-align:center; box-shadow:var(--shadow); border-left:4px solid var(--red);">
+                <div style="font-size:1.8rem; font-weight:800; color:var(--red);" id="rec-danger">0</div>
+                <div style="font-size:0.7rem; color:var(--text-secondary); font-family:'Inter',sans-serif;">Danger</div>
+            </div>
+            <div style="background:var(--white); border-radius:var(--radius); padding:16px; text-align:center; box-shadow:var(--shadow); border-left:4px solid var(--orange);">
+                <div style="font-size:1.8rem; font-weight:800; color:var(--orange);" id="rec-moderate">0</div>
+                <div style="font-size:0.7rem; color:var(--text-secondary); font-family:'Inter',sans-serif;">Moderate</div>
+            </div>
+            <div style="background:var(--white); border-radius:var(--radius); padding:16px; text-align:center; box-shadow:var(--shadow); border-left:4px solid #2E7D32;">
+                <div style="font-size:1.8rem; font-weight:800; color:#2E7D32;" id="rec-safe">0</div>
+                <div style="font-size:0.7rem; color:var(--text-secondary); font-family:'Inter',sans-serif;">Safe</div>
+            </div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; background:var(--white); padding:12px 16px; border-radius:var(--radius); box-shadow:var(--shadow);">
+            <button onclick="filterRecords('all',this)" style="padding:6px 16px; border-radius:6px; border:2px solid var(--primary); cursor:pointer; font-size:0.75rem; font-weight:600; font-family:'Inter',sans-serif; background:var(--primary); color:var(--white);">All</button>
+            <button onclick="filterRecords('safe',this)" style="padding:6px 16px; border-radius:6px; border:2px solid var(--border); cursor:pointer; font-size:0.75rem; font-weight:600; font-family:'Inter',sans-serif; background:var(--white); color:var(--text);">🟢 Safe</button>
+            <button onclick="filterRecords('moderate',this)" style="padding:6px 16px; border-radius:6px; border:2px solid var(--border); cursor:pointer; font-size:0.75rem; font-weight:600; font-family:'Inter',sans-serif; background:var(--white); color:var(--text);">🟡 Moderate</button>
+            <button onclick="filterRecords('danger',this)" style="padding:6px 16px; border-radius:6px; border:2px solid var(--border); cursor:pointer; font-size:0.75rem; font-weight:600; font-family:'Inter',sans-serif; background:var(--white); color:var(--text);">🔴 Danger</button>
+            <button onclick="downloadCSV()" style="padding:6px 16px; border-radius:6px; border:2px solid var(--primary); cursor:pointer; font-size:0.75rem; font-weight:600; font-family:'Inter',sans-serif; background:var(--primary); color:var(--white); margin-left:auto;">⬇ Download CSV</button>
+        </div>
+        <div style="background:var(--white); border-radius:var(--radius); padding:20px 24px; box-shadow:var(--shadow);">
+            <h2 style="font-size:1.1rem; font-weight:700; color:var(--primary); margin-bottom:12px; font-family:'Inter',sans-serif;">📋 All Reports</h2>
+            <div id="recordsList" style="max-height:500px; overflow-y:auto;">
+                <div class="empty-state">
+                    <div class="ei">📋</div>
+                    <p>No records yet.<br>Submit your first report using the <strong>Report</strong> tab!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── APP BODY ─── -->
+<div class="app-body">
+
+    <!-- ─── SIDEBAR ─── -->
+    <div class="sidebar">
+
+        <!-- Base Map Selector - 4 Maps Only -->
+        <div class="base-map-selector">
+            <button class="map-btn active" data-map="osm" onclick="switchBaseMap('osm')">🗺️ OSM</button>
+            <button class="map-btn" data-map="satellite" onclick="switchBaseMap('satellite')">🛰️ Satellite</button>
+            <button class="map-btn" data-map="topo" onclick="switchBaseMap('topo')">🗺️ Topo</button>
+            <button class="map-btn" data-map="dark" onclick="switchBaseMap('dark')">🌙 Dark</button>
+        </div>
+
+        <!-- ─── MAIN FEATURE BUTTONS ─── -->
+<div class="feature-buttons">
+    <button class="feature-btn active" id="btnReport" onclick="switchFeature('report')">
+        <span class="icon">📍</span> Submit Report
+    </button>
+    <button class="feature-btn" id="btnSpatial" onclick="switchFeature('spatial')">
+        <span class="icon">📐</span> Spatial Tools
+    </button>
+    <button class="feature-btn" id="btnExplore" onclick="switchFeature('explore')">
+        <span class="icon">🏛️</span> Explore Nepal
+    </button>
+</div>
+
+        <!-- ─── EXPLORE SECTION ─── -->
+        <div class="explore-section active" id="exploreSection">
+            <div class="explore-title">🏛️ Heritage & Famous Places</div>
+            <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                <button class="explore-btn" onclick="explorePlace('Kathmandu Durbar Square', 27.7043, 85.3073)">Kathmandu</button>
+                <button class="explore-btn" onclick="explorePlace('Patan Durbar Square', 27.6728, 85.3249)">Patan</button>
+                <button class="explore-btn" onclick="explorePlace('Bhaktapur Durbar Square', 27.6722, 85.4272)">Bhaktapur</button>
+                <button class="explore-btn" onclick="explorePlace('Swayambhunath', 27.7149, 85.2903)">Swayambhunath</button>
+                <button class="explore-btn" onclick="explorePlace('Boudhanath Stupa', 27.7215, 85.3620)">Boudhanath</button>
+                <button class="explore-btn" onclick="explorePlace('Pashupatinath', 27.7107, 85.3484)">Pashupatinath</button>
+                <button class="explore-btn" onclick="explorePlace('Lumbini', 27.4769, 83.2766)">Lumbini</button>
+                <button class="explore-btn" onclick="explorePlace('Chitwan', 27.5522, 84.4768)">Chitwan</button>
+                <button class="explore-btn" onclick="explorePlace('Everest', 27.9881, 86.9250)">Everest</button>
+                <button class="explore-btn" onclick="explorePlace('Pokhara', 28.2096, 83.9856)">Pokhara</button>
+            </div>
+            <div class="explore-subtitle">🛰️ Click to view in Satellite</div>
+            
+            <div class="explore-title" style="margin-top:8px;">🏔️ Trekking Destinations</div>
+            <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                <button class="explore-btn" onclick="exploreTrek('Everest Base Camp', 27.9881, 86.9250)">Everest BC</button>
+                <button class="explore-btn" onclick="exploreTrek('Annapurna BC', 28.5300, 83.8800)">Annapurna BC</button>
+                <button class="explore-btn" onclick="exploreTrek('Langtang Valley', 28.2167, 85.6000)">Langtang</button>
+                <button class="explore-btn" onclick="exploreTrek('Manaslu', 28.5500, 84.8667)">Manaslu</button>
+                <button class="explore-btn" onclick="exploreTrek('Mustang', 28.8333, 83.6667)">Mustang</button>
+                <button class="explore-btn" onclick="exploreTrek('Gokyo Lakes', 27.9500, 86.7000)">Gokyo</button>
+                <button class="explore-btn" onclick="exploreTrek('Kanchenjunga', 27.7000, 87.8000)">Kanchenjunga</button>
+                <button class="explore-btn" onclick="exploreTrek('Dolpo', 29.0000, 82.8333)">Dolpo</button>
+                <button class="explore-btn" onclick="exploreTrek('Mardi Himal', 28.4000, 83.9000)">Mardi</button>
+                <button class="explore-btn" onclick="exploreTrek('Makalu BC', 27.5500, 87.1000)">Makalu</button>
+                <button class="explore-btn" onclick="exploreTrek('Dhaulagiri', 28.7000, 83.5000)">Dhaulagiri</button>
+                <button class="explore-btn" onclick="exploreTrek('Rara Lake', 29.5333, 82.0833)">Rara</button>
+                <button class="explore-btn" onclick="exploreTrek('Poon Hill', 28.4000, 83.7000)">Poon Hill</button>
+                <button class="explore-btn" onclick="exploreTrek('Tilicho Lake', 28.7000, 83.9000)">Tilicho</button>
+            </div>
+            <div class="explore-subtitle">🗺️ Click to view on Topographic Map</div>
+        </div>
+
+        <!-- ─── SPATIAL TOOLS SECTION ─── -->
+        <div class="spatial-section" id="spatialSection">
+            <div class="explore-title">📐 Spatial Analysis Tools</div>
+            <div class="spatial-tools">
+                <button class="spatial-btn" onclick="activateTool('distance')"><span class="icon">📏</span> Distance</button>
+                <button class="spatial-btn" onclick="activateTool('buffer')"><span class="icon">⭕</span> 15km Buffer</button>
+                <button class="spatial-btn" onclick="activateTool('nearest')"><span class="icon">📍</span> Nearest</button>
+                <button class="spatial-btn" onclick="activateTool('area')"><span class="icon">📐</span> Area</button>
+                <button class="spatial-btn" onclick="deactivateTool()"><span class="icon">✕</span> Clear</button>
+            </div>
+            <div class="spatial-info" id="spatialInfo">
+                <div><span class="tool-title" id="toolTitle">📏 Distance Tool</span><span style="margin-left:12px;" id="toolHint">Click two points on the map</span></div>
+                <div class="tool-result" id="toolResult">Waiting for input...</div>
+            </div>
+        </div>
+
+        <!-- ─── ADMIN BOUNDARY LAYERS ─── -->
+        <div class="admin-layers">
+            <div class="admin-layers-title">🗺️ Admin Boundaries</div>
+            <label class="layer-chip" data-level="country">
+                <input type="checkbox" checked onchange="toggleAdminLayer('country', this)">
+                <span class="dot" style="background:#1C4620"></span> Country
+            </label>
+            <label class="layer-chip" data-level="province">
+                <input type="checkbox" onchange="toggleAdminLayer('province', this)">
+                <span class="dot" style="background:var(--purple)"></span> Province
+            </label>
+            <label class="layer-chip" data-level="district">
+                <input type="checkbox" checked onchange="toggleAdminLayer('district', this)">
+                <span class="dot" style="background:var(--blue)"></span> District
+            </label>
+            <label class="layer-chip" data-level="municipality">
+                <input type="checkbox" onchange="toggleAdminLayer('municipality', this)">
+                <span class="dot" style="background:var(--orange)"></span> Municipality
+            </label>
+            <label class="layer-chip" data-level="ward">
+                <input type="checkbox" onchange="toggleAdminLayer('ward', this)">
+                <span class="dot" style="background:var(--red)"></span> Ward
+            </label>
+        </div>
+
+        <!-- Search Box -->
+        <div class="search-box">
+            <input type="text" id="placeSearch" placeholder="🔍 Search any place, district, province, municipality, or ward..." oninput="searchPlace(this.value)" onblur="setTimeout(closeDropdown,200)"/>
+            <div id="searchDropdown"></div>
+        </div>
+
+        <!-- Tab Bar -->
+        <div class="tab-bar">
+            <button class="tab-btn active" id="tabBtnForm" onclick="switchTab('form')">📍 Submit Report</button>
+        </div>
+
+        <!-- ─── FORM TAB ─── -->
+        <div id="tabForm" class="form-wrap">
+            <div class="step-progress" id="stepProgress">
+                <div class="step-dot active" data-step="1"></div>
+                <div class="step-dot" data-step="2"></div>
+                <div class="step-dot" data-step="3"></div>
+                <div class="step-dot" data-step="4"></div>
+            </div>
+
+            <!-- STEP 1 -->
+            <div class="form-step active" data-step="1">
+                <div class="step-title">📍 Step 1: Select Location</div>
+                <div class="step-sub">Search or click on the map to select a location</div>
+                <div class="form-hint">💡 <strong>Tip:</strong> Click anywhere on the map or search for a place.</div>
+                <div class="coord-display" id="coordBox">📍 No location selected</div>
+                <div class="form-group">
+                    <label class="form-label">Select District <span class="required">*</span></label>
+                    <select class="form-select" id="districtSelect" onchange="validateDistrict()">
+                        <option value="">-- Select District --</option>
+                    </select>
+                    <div id="districtError" style="color:var(--red); font-size:0.75rem; margin-top:4px; display:none; font-family:'Inter',sans-serif;">⚠️ Please select a district to continue</div>
+                </div>
+                <div class="step-nav">
+                    <button class="btn-prev" style="opacity:0.3;cursor:default;">Back</button>
+                    <button class="btn-next" id="nextBtn1" onclick="goToStep(2)">Next →</button>
+                </div>
+            </div>
+
+            <!-- STEP 2 -->
+            <div class="form-step" data-step="2">
+                <div class="step-title">⚠️ Step 2: Report Details</div>
+                <div class="step-sub">Select the type of issue and safety level</div>
+                <div class="form-group">
+                    <label class="form-label">Report Type <span class="required">*</span> <span style="font-weight:400;font-size:0.75rem;color:var(--text-secondary)">(select one or more)</span></label>
+                    <div class="type-grid" id="typeGrid">
+                        <div class="type-chip" data-type="Safety Concern" onclick="toggleType(this)">⚠️ Safety Concern<span class="check"> ✔</span></div>
+                        <div class="type-chip" data-type="Theft / Crime" onclick="toggleType(this)">🔐 Theft / Crime<span class="check"> ✔</span></div>
+                        <div class="type-chip" data-type="Scam / Fraud" onclick="toggleType(this)">🚫 Scam / Fraud<span class="check"> ✔</span></div>
+                        <div class="type-chip" data-type="Road / Traffic" onclick="toggleType(this)">🚦 Road / Traffic<span class="check"> ✔</span></div>
+                        <div class="type-chip" data-type="Sanitation" onclick="toggleType(this)">🧹 Sanitation<span class="check"> ✔</span></div>
+                        <div class="type-chip" data-type="Emergency Access" onclick="toggleType(this)">🚨 Emergency<span class="check"> ✔</span></div>
+                        <div class="type-chip" data-type="Positive Feedback" onclick="toggleType(this)">✅ Positive<span class="check"> ✔</span></div>
+                        <div class="type-chip" data-type="Other" onclick="toggleType(this)">📝 Other<span class="check"> ✔</span></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Overall Safety Level <span class="required">*</span></label>
+                    <div class="safety-grid">
+                        <button class="safety-btn safe" data-level="safe" onclick="selectSafety(this)">🟢 Safe</button>
+                        <button class="safety-btn moderate" data-level="moderate" onclick="selectSafety(this)">🟡 Moderate</button>
+                        <button class="safety-btn danger" data-level="danger" onclick="selectSafety(this)">🔴 Danger</button>
+                    </div>
+                </div>
+                <div class="step-nav">
+                    <button class="btn-prev" onclick="goToStep(1)">← Back</button>
+                    <button class="btn-next" onclick="goToStep(3)">Next →</button>
+                </div>
+            </div>
+
+            <!-- STEP 3 -->
+            <div class="form-step" data-step="3">
+                <div class="step-title">⭐ Step 3: Your Experience</div>
+                <div class="step-sub">Rate the location and describe your experience</div>
+                <div class="form-group">
+                    <label class="form-label">Your Rating</label>
+                    <div class="star-rating" id="starRating">
+                        <button class="star-btn" data-star="1" onclick="setStar(1)">★<span class="star-text">Poor</span></button>
+                        <button class="star-btn" data-star="2" onclick="setStar(2)">★<span class="star-text">Fair</span></button>
+                        <button class="star-btn" data-star="3" onclick="setStar(3)">★<span class="star-text">Good</span></button>
+                        <button class="star-btn" data-star="4" onclick="setStar(4)">★<span class="star-text">Great</span></button>
+                        <button class="star-btn" data-star="5" onclick="setStar(5)">★<span class="star-text">Excellent</span></button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description / Complaint</label>
+                    <textarea class="form-textarea" id="descInput" placeholder="Describe your experience..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Your Name <span style="font-weight:400;font-size:0.75rem;color:var(--text-secondary)">(optional)</span></label>
+                    <input class="form-input" id="nameInput" placeholder="Anonymous" />
+                </div>
+                <div class="step-nav">
+                    <button class="btn-prev" onclick="goToStep(2)">← Back</button>
+                    <button class="btn-next" onclick="goToStep(4)">Next →</button>
+                </div>
+            </div>
+
+            <!-- STEP 4 -->
+            <div class="form-step" data-step="4">
+                <div class="step-title">📸 Step 4: Photo & Submit</div>
+                <div class="step-sub">Attach a photo (optional) and submit your report</div>
+                <div class="photo-zone" onclick="document.getElementById('photoInput').click()">
+                    <input type="file" id="photoInput" accept="image/*" onchange="handlePhoto(this)" />
+                    <span id="photoLabel">📷 Click to attach a photo (optional)</span>
+                </div>
+                <div id="photoPreviewWrap">
+                    <img id="photoPreview" src="" alt="Preview" onclick="openLightbox(this.src)" />
+                    <div class="photo-preview-label">Click photo to view full size</div>
+                </div>
+                <div class="step-nav">
+                    <button class="btn-prev" onclick="goToStep(3)">← Back</button>
+                    <button class="btn-submit" onclick="submitReport()">📍 Submit Report</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── MAP ─── -->
+    <div class="map-area">
+        <div id="map"></div>
+        <div class="map-hint" id="mapHint">🇳🇵 Click on map for spatial tools or to select location</div>
+        <div class="map-legend">
+            <div class="legend-title">Report Status</div>
+            <div class="legend-item"><div class="leg-dot" style="background:#2E7D32"></div> Safe</div>
+            <div class="legend-item"><div class="leg-dot" style="background:var(--orange)"></div> Moderate</div>
+            <div class="legend-item"><div class="leg-dot" style="background:var(--red)"></div> Danger</div>
+            <div class="legend-item"><div class="leg-dot" style="background:var(--blue)"></div> Spatial Tool</div>
+        </div>
+        <div class="statusbar">
+            <span id="statusMsg">🇳🇵 Safe Nepal — 77 Districts with Spatial Analysis</span>
+            <span id="coordBar">28.3949° N, 84.1240° E</span>
+        </div>
+    </div>
+</div>
+
+<!-- ─── PHOTO LIGHTBOX ─── -->
+<div class="photo-lightbox" id="photoLightbox" onclick="closeLightbox()">
+    <span class="close">&times;</span>
+    <img id="lightboxImg" src="" alt="Full size photo" />
+</div>
+
+<!-- ─── CONFIRM DELETE ─── -->
+<div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-box">
+        <h3>🗑 Delete Report?</h3>
+        <p id="confirmMsg">Are you sure you want to delete this report?</p>
+        <div class="confirm-actions">
+            <button class="btn-confirm-cancel" onclick="closeConfirm()">Cancel</button>
+            <button class="btn-confirm-del" onclick="confirmDelete()">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- ─── TOAST ─── -->
+<div class="toast" id="toast"></div>
+
+<!-- ─── ROUTE PANEL ─── -->
+<div id="routePanel" style="display:none; position:fixed; inset:0; z-index:9998; background:var(--bg); overflow-y:auto; padding:0;">
+    <div style="position:sticky;top:0;z-index:10;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;box-shadow:0 2px 12px rgba(0,0,0,0.2);">
+        <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:1.5rem;">🗺️</span>
+            <div>
+                <div style="font-size:1.1rem;font-weight:800;letter-spacing:1px;font-family:'Inter',sans-serif;">Route Planner</div>
+                <div style="font-size:0.7rem;opacity:0.7;font-family:'Inter',sans-serif;">Find routes, distances & travel times</div>
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <button onclick="closeRoutePanel()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50%;width:38px;height:38px;font-size:1.3rem;cursor:pointer;font-family:'Inter',sans-serif;">✕</button>
+        </div>
+    </div>
+
+    <div style="max-width:980px;margin:0 auto;padding:20px 16px;">
+        <!-- Route Input -->
+        <div style="background:#fff;border-radius:12px;padding:18px 20px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,0.07);">
+            <div style="font-size:0.85rem;font-weight:700;color:var(--text);margin-bottom:12px;font-family:'Inter',sans-serif;">📍 Enter Route Details</div>
+            
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div>
+                    <label style="font-size:0.7rem;font-weight:600;color:var(--text-secondary);font-family:'Inter',sans-serif;">Start Point</label>
+                    <input type="text" id="routeStart" placeholder="e.g., Kathmandu" style="width:100%;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;font-family:'Inter',sans-serif;">
+                </div>
+                <div>
+                    <label style="font-size:0.7rem;font-weight:600;color:var(--text-secondary);font-family:'Inter',sans-serif;">End Point</label>
+                    <input type="text" id="routeEnd" placeholder="e.g., Pokhara" style="width:100%;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:0.85rem;font-family:'Inter',sans-serif;">
+                </div>
+            </div>
+            
+            <div style="display:flex;gap:8px;margin-top:12px;">
+                <button onclick="calculateRoute()" style="flex:1;background:var(--primary);color:#fff;border:none;border-radius:8px;padding:10px;font-size:0.85rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.3s;">🛣️ Calculate Route</button>
+                <button onclick="useCurrentLocation()" style="flex:1;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:10px;font-size:0.85rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.3s;">📍 Use My Location</button>
+            </div>
+        </div>
+
+        <!-- Route Results -->
+        <div id="routeResults" style="display:none;">
+            <div style="background:#fff;border-radius:12px;padding:18px 20px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,0.07);">
+                <div style="font-size:0.85rem;font-weight:700;color:var(--primary);margin-bottom:12px;font-family:'Inter',sans-serif;">🗺️ Route Summary</div>
+                <div id="routeSummary" style="font-size:0.9rem;color:var(--text);font-family:'Inter',sans-serif;"></div>
+            </div>
+            
+            <div style="background:#fff;border-radius:12px;padding:18px 20px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,0.07);">
+                <div style="font-size:0.85rem;font-weight:700;color:var(--text-secondary);margin-bottom:8px;font-family:'Inter',sans-serif;">🚗 Suggested Routes</div>
+                <div id="routeList" style="font-size:0.85rem;font-family:'Inter',sans-serif;"></div>
+            </div>
+
+            <div style="background:#fff;border-radius:12px;padding:18px 20px;box-shadow:0 2px 12px rgba(0,0,0,0.07);">
+                <div style="font-size:0.85rem;font-weight:700;color:var(--text-secondary);margin-bottom:8px;font-family:'Inter',sans-serif;">📊 Route Statistics</div>
+                <div id="routeStats" style="font-size:0.85rem;font-family:'Inter',sans-serif;"></div>
+            </div>
+        </div>
+
+        <!-- Popular Routes -->
+        <div id="popularRoutes" style="margin-top:16px;">
+            <div style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;font-family:'Inter',sans-serif;">⭐ Popular Tourist Routes</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div class="popular-route" onclick="setRoute('Kathmandu','Pokhara')" style="background:#fff;border-radius:8px;padding:10px 14px;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,0.06);border-left:4px solid var(--primary);transition:all 0.3s;font-size:0.75rem;font-family:'Inter',sans-serif;">
+                    <div style="font-weight:700;">Kathmandu → Pokhara</div>
+                    <div style="color:#888;font-size:0.7rem;">~200 km · 5-6 hrs</div>
+                </div>
+                <div class="popular-route" onclick="setRoute('Kathmandu','Lumbini')" style="background:#fff;border-radius:8px;padding:10px 14px;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,0.06);border-left:4px solid var(--blue);transition:all 0.3s;font-size:0.75rem;font-family:'Inter',sans-serif;">
+                    <div style="font-weight:700;">Kathmandu → Lumbini</div>
+                    <div style="color:#888;font-size:0.7rem;">~267 km · 6-7 hrs</div>
+                </div>
+                <div class="popular-route" onclick="setRoute('Pokhara','Jomsom')" style="background:#fff;border-radius:8px;padding:10px 14px;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,0.06);border-left:4px solid var(--orange);transition:all 0.3s;font-size:0.75rem;font-family:'Inter',sans-serif;">
+                    <div style="font-weight:700;">Pokhara → Jomsom</div>
+                    <div style="color:#888;font-size:0.7rem;">~147 km · 5-6 hrs</div>
+                </div>
+                <div class="popular-route" onclick="setRoute('Kathmandu','Chitwan')" style="background:#fff;border-radius:8px;padding:10px 14px;cursor:pointer;box-shadow:0 1px 6px rgba(0,0,0,0.06);border-left:4px solid var(--purple);transition:all 0.3s;font-size:0.75rem;font-family:'Inter',sans-serif;">
+                    <div style="font-weight:700;">Kathmandu → Chitwan</div>
+                    <div style="color:#888;font-size:0.7rem;">~148 km · 3-4 hrs</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ─── CONFIG ───
+const API_URL = null;
+let _nextId = Date.now();
+
+// ─── LOCAL STORAGE HELPERS ───
+function saveReportsLocal() {
+    try { localStorage.setItem('safeNepal_reports', JSON.stringify(reports)); } catch(e) {}
+}
+function loadReportsLocal() {
+    try {
+        const raw = localStorage.getItem('safeNepal_reports');
+        return raw ? JSON.parse(raw) : [];
+    } catch(e) { return []; }
+}
+let recordsFilter = 'all';
+let bufferData = [];
+
+// ─── ALL 77 DISTRICTS ───
+const NEPAL_DISTRICTS = [
+    "Achham", "Arghakhanchi", "Baglung", "Baitadi", "Bajhang", "Bajura", "Banke", 
+    "Bara", "Bardiya", "Bhaktapur", "Bhojpur", "Chitwan", "Dadeldhura", "Dailekh", 
+    "Dang", "Darchula", "Dhading", "Dhankuta", "Dhanusa", "Dolakha", "Dolpa", 
+    "Doti", "Gorkha", "Gulmi", "Humla", "Ilam", "Jajarkot", "Jhapa", "Jumla", 
+    "Kailali", "Kalikot", "Kanchanpur", "Kapilvastu", "Kaski", "Kathmandu", 
+    "Kavrepalanchok", "Khotang", "Lalitpur", "Lamjung", "Mahottari", "Makwanpur", 
+    "Manang", "Morang", "Mugu", "Mustang", "Myagdi", "Nawalpur", "Nuwakot", 
+    "Okhaldhunga", "Palpa", "Panchthar", "Parbat", "Parsa", "Pyuthan", "Ramechhap", 
+    "Rasuwa", "Rautahat", "Rolpa", "Rukum East", "Rukum West", "Rupandehi", 
+    "Salyan", "Sankhuwasabha", "Saptari", "Sarlahi", "Sindhuli", "Sindhupalchok", 
+    "Siraha", "Solukhumbu", "Sunsari", "Surkhet", "Syangja", "Tanahu", "Taplejung", 
+    "Tehrathum", "Udayapur"
+];
+
+// ─── TREKKING SITES ───
+const TREKKING_SITES = [
+    {name:"Everest Base Camp", lat:27.9881, lng:86.9250, district:"Solukhumbu", difficulty:"Challenging"},
+    {name:"Annapurna Base Camp", lat:28.5300, lng:83.8800, district:"Kaski", difficulty:"Moderate"},
+    {name:"Langtang Valley", lat:28.2167, lng:85.6000, district:"Rasuwa", difficulty:"Moderate"},
+    {name:"Manaslu Circuit", lat:28.5500, lng:84.8667, district:"Gorkha", difficulty:"Challenging"},
+    {name:"Mustang", lat:28.8333, lng:83.6667, district:"Mustang", difficulty:"Moderate"},
+    {name:"Gokyo Lakes", lat:27.9500, lng:86.7000, district:"Solukhumbu", difficulty:"Challenging"},
+    {name:"Kanchenjunga Base Camp", lat:27.7000, lng:87.8000, district:"Taplejung", difficulty:"Challenging"},
+    {name:"Dolpo", lat:29.0000, lng:82.8333, district:"Dolpa", difficulty:"Challenging"},
+    {name:"Mardi Himal", lat:28.4000, lng:83.9000, district:"Kaski", difficulty:"Easy"},
+    {name:"Makalu Base Camp", lat:27.5500, lng:87.1000, district:"Sankhuwasabha", difficulty:"Challenging"},
+    {name:"Dhaulagiri Circuit", lat:28.7000, lng:83.5000, district:"Myagdi", difficulty:"Challenging"},
+    {name:"Rara Lake Trek", lat:29.5333, lng:82.0833, district:"Mugu", difficulty:"Easy"},
+    {name:"Ganesh Himal", lat:28.2000, lng:85.2000, district:"Rasuwa", difficulty:"Moderate"},
+    {name:"Panch Pokhari", lat:28.1000, lng:85.7000, district:"Sindhupalchok", difficulty:"Moderate"},
+    {name:"Jomsom-Muktinath", lat:28.7833, lng:83.7333, district:"Mustang", difficulty:"Moderate"},
+    {name:"Tilicho Lake", lat:28.7000, lng:83.9000, district:"Manang", difficulty:"Challenging"},
+    {name:"Khopra Danda", lat:28.3500, lng:83.7000, district:"Kaski", difficulty:"Easy"},
+    {name:"Poon Hill", lat:28.4000, lng:83.7000, district:"Kaski", difficulty:"Easy"},
+    {name:"Nar Phu Valley", lat:28.6000, lng:84.2000, district:"Manang", difficulty:"Challenging"},
+    {name:"Tsum Valley", lat:28.4000, lng:85.1000, district:"Gorkha", difficulty:"Moderate"}
+];
+
+// ─── TREKKING DESTINATIONS & WORLD HERITAGE SITES (GLOBAL - FIXED) ───
+const trekDestinations = [
+    { name: 'Everest Base Camp', district: 'Solukhumbu', difficulty: 'Challenging', days: 14, distance: 130, via: 'Lukla → Namche → Tengboche → Gorak Shep', maxAltitude: 5364, type: 'trek' },
+    { name: 'Annapurna Circuit', district: 'Manang', difficulty: 'Challenging', days: 18, distance: 200, via: 'Besisahar → Manang → Thorong La → Muktinath', maxAltitude: 5416, type: 'trek' },
+    { name: 'Annapurna Base Camp', district: 'Kaski', difficulty: 'Moderate', days: 10, distance: 80, via: 'Nayapul → Ghandruk → Chhomrong → ABC', maxAltitude: 4130, type: 'trek' },
+    { name: 'Manaslu Circuit', district: 'Gorkha', difficulty: 'Challenging', days: 14, distance: 180, via: 'Soti Khola → Samagaon → Larkya La → Dharapani', maxAltitude: 5100, type: 'trek' },
+    { name: 'Langtang Valley', district: 'Rasuwa', difficulty: 'Moderate', days: 8, distance: 80, via: 'Syabrubesi → Lama Hotel → Kyanjin Gompa', maxAltitude: 3870, type: 'trek' },
+    { name: 'Mustang', district: 'Mustang', difficulty: 'Moderate', days: 10, distance: 120, via: 'Pokhara → Jomsom → Kagbeni → Lo Manthang', maxAltitude: 3810, type: 'trek' },
+    { name: 'Gokyo Lakes', district: 'Solukhumbu', difficulty: 'Challenging', days: 13, distance: 130, via: 'Lukla → Namche → Dole → Gokyo', maxAltitude: 5360, type: 'trek' },
+    { name: 'Kanchenjunga Base Camp', district: 'Taplejung', difficulty: 'Challenging', days: 20, distance: 200, via: 'Taplejung → Ghunsa → Pangpema', maxAltitude: 5140, type: 'trek' },
+    { name: 'Dolpo', district: 'Dolpa', difficulty: 'Challenging', days: 18, distance: 200, via: 'Jumla → Shey Gompa → Dho Tarap', maxAltitude: 5500, type: 'trek' },
+    { name: 'Dhaulagiri Circuit', district: 'Myagdi', difficulty: 'Challenging', days: 15, distance: 160, via: 'Pokhara → Marpha → Dhaulagiri Base Camp', maxAltitude: 4800, type: 'trek' },
+    { name: 'Mardi Himal', district: 'Kaski', difficulty: 'Easy-Moderate', days: 6, distance: 50, via: 'Pokhara → Forest Camp → High Camp → Base Camp', maxAltitude: 4500, type: 'trek' },
+    { name: 'Makalu Base Camp', district: 'Sankhuwasabha', difficulty: 'Challenging', days: 16, distance: 180, via: 'Num → Khadbari → Makalu Base Camp', maxAltitude: 5000, type: 'trek' },
+    { name: 'Rara Lake Trek', district: 'Mugu', difficulty: 'Easy', days: 6, distance: 60, via: 'Jumla → Rara Lake → Jumla', maxAltitude: 2990, type: 'trek' },
+    { name: 'Ganesh Himal', district: 'Rasuwa', difficulty: 'Moderate', days: 10, distance: 90, via: 'Kathmandu → Dhading → Ganesh Himal Base Camp', maxAltitude: 4200, type: 'trek' },
+    { name: 'Panch Pokhari', district: 'Sindhupalchok', difficulty: 'Moderate', days: 8, distance: 70, via: 'Kathmandu → Chautara → Panch Pokhari', maxAltitude: 4100, type: 'trek' },
+    { name: 'Jomsom-Muktinath', district: 'Mustang', difficulty: 'Moderate', days: 7, distance: 60, via: 'Pokhara → Jomsom → Muktinath', maxAltitude: 3800, type: 'trek' },
+    { name: 'Tilicho Lake', district: 'Manang', difficulty: 'Challenging', days: 12, distance: 110, via: 'Besisahar → Manang → Tilicho Base Camp → Tilicho Lake', maxAltitude: 4919, type: 'trek' },
+    { name: 'Khopra Danda', district: 'Kaski', difficulty: 'Easy-Moderate', days: 5, distance: 40, via: 'Pokhara → Khopra Ridge → Danda', maxAltitude: 3660, type: 'trek' },
+    { name: 'Poon Hill', district: 'Kaski', difficulty: 'Easy', days: 4, distance: 35, via: 'Nayapul → Ghorepani → Poon Hill', maxAltitude: 3210, type: 'trek' },
+    { name: 'Nar Phu Valley', district: 'Manang', difficulty: 'Challenging', days: 14, distance: 150, via: 'Besisahar → Nar → Phu → Kang La Pass', maxAltitude: 5300, type: 'trek' },
+    { name: 'Tsum Valley', district: 'Gorkha', difficulty: 'Moderate', days: 10, distance: 100, via: 'Soti Khola → Tsum Valley → Mu Gompa', maxAltitude: 3700, type: 'trek' },
+    { name: 'Everest Three Passes', district: 'Solukhumbu', difficulty: 'Very Challenging', days: 18, distance: 150, via: 'Lukla → Kongma La → Cho La → Renjo La', maxAltitude: 5545, type: 'trek' },
+    // Short names
+    { name: 'Everest', district: 'Solukhumbu', type: 'trek', difficulty: 'Challenging', days: 14, distance: 130, via: 'Lukla → Namche → Tengboche → Gorak Shep', maxAltitude: 5364 },
+    { name: 'Annapurna', district: 'Kaski', type: 'trek', difficulty: 'Moderate', days: 10, distance: 80, via: 'Nayapul → Ghandruk → Chhomrong → ABC', maxAltitude: 4130 },
+    { name: 'Langtang', district: 'Rasuwa', type: 'trek', difficulty: 'Moderate', days: 8, distance: 80, via: 'Syabrubesi → Lama Hotel → Kyanjin Gompa', maxAltitude: 3870 },
+    { name: 'Manaslu', district: 'Gorkha', type: 'trek', difficulty: 'Challenging', days: 14, distance: 180, via: 'Soti Khola → Samagaon → Larkya La → Dharapani', maxAltitude: 5100 },
+    { name: 'Kanchenjunga', district: 'Taplejung', type: 'trek', difficulty: 'Challenging', days: 20, distance: 200, via: 'Taplejung → Ghunsa → Pangpema', maxAltitude: 5140 },
+    { name: 'Dhaulagiri', district: 'Myagdi', type: 'trek', difficulty: 'Challenging', days: 15, distance: 160, via: 'Pokhara → Marpha → Dhaulagiri Base Camp', maxAltitude: 4800 },
+    { name: 'Makalu', district: 'Sankhuwasabha', type: 'trek', difficulty: 'Challenging', days: 16, distance: 180, via: 'Num → Khadbari → Makalu Base Camp', maxAltitude: 5000 },
+    { name: 'Rara', district: 'Mugu', type: 'trek', difficulty: 'Easy', days: 6, distance: 60, via: 'Jumla → Rara Lake → Jumla', maxAltitude: 2990 },
+    { name: 'Gokyo', district: 'Solukhumbu', type: 'trek', difficulty: 'Challenging', days: 13, distance: 130, via: 'Lukla → Namche → Dole → Gokyo', maxAltitude: 5360 },
+    { name: 'Mardi', district: 'Kaski', type: 'trek', difficulty: 'Easy-Moderate', days: 6, distance: 50, via: 'Pokhara → Forest Camp → High Camp → Base Camp', maxAltitude: 4500 }
+];
+
+const heritageSites = [
+    { name: 'Kathmandu Durbar Square', district: 'Kathmandu', type: 'UNESCO' },
+    { name: 'Patan Durbar Square', district: 'Lalitpur', type: 'UNESCO' },
+    { name: 'Bhaktapur Durbar Square', district: 'Bhaktapur', type: 'UNESCO' },
+    { name: 'Swayambhunath', district: 'Kathmandu', type: 'UNESCO' },
+    { name: 'Boudhanath Stupa', district: 'Kathmandu', type: 'UNESCO' },
+    { name: 'Pashupatinath', district: 'Kathmandu', type: 'UNESCO' },
+    { name: 'Lumbini', district: 'Rupandehi', type: 'UNESCO' },
+    { name: 'Chitwan National Park', district: 'Chitwan', type: 'UNESCO' },
+    { name: 'Pokhara', district: 'Kaski', type: 'Tourist Hub' },
+    { name: 'Kathmandu', district: 'Kathmandu', type: 'Capital' },
+    { name: 'Patan', district: 'Lalitpur', type: 'UNESCO' },
+    { name: 'Bhaktapur', district: 'Bhaktapur', type: 'UNESCO' }
+];
+
+// ─── ALL PLACES FOR SEARCH (from GeoJSON) ───
+let allPlaces = [];
+
+// ─── STATE ───
+let reports = [];
+let selectedLat = null, selectedLng = null;
+let selectedTypes = [];
+let selectedSafety = null;
+let starValue = 0;
+let tempMarker = null;
+let photoDataURL = null;
+let deleteId = null;
+let markerMap = {};
+let currentFilter = 'all';
+let currentStep = 1;
+let currentTab = 'form';
+
+let currentTool = null;
+let toolPoints = [];
+let toolLayers = [];
+
+// ─── MAP ───
+const map = L.map('map').setView([28.3949, 84.1240], 7);
+
+const baseMaps = {
+    osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: '© OpenStreetMap', maxZoom: 19}),
+    satellite: L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], attribution: '© Google'}),
+    topo: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {maxZoom: 17, attribution: '© OpenTopoMap'}),
+    dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {attribution: '© CartoDB', maxZoom: 19})
+};
+baseMaps.osm.addTo(map);
+
+// ─── ADMIN BOUNDARIES ───
+const ADMIN_LAYER_CONFIG = {
+    country: { url: 'data/nepal_country.geojson', color: '#1C4620', weight: 3, fillOpacity: 0.04, dash: '8,6' },
+    province: { url: 'data/nepal_provinces.geojson', color: '#6A1B9A', weight: 2.4, fillOpacity: 0.05 },
+    district: { url: 'data/nepal_districts.geojson', color: '#1565C0', weight: 1.6, fillOpacity: 0.03 },
+    municipality: { url: 'data/nepal_municipalities.geojson', color: '#F57F17', weight: 1, fillOpacity: 0.03 },
+    ward: { url: 'data/nepal_wards.geojson', color: '#C62828', weight: 0.6, fillOpacity: 0.02 }
+};
+const adminLayerObjs = {};
+
+async function loadAdminLayer(level) {
+    if (adminLayerObjs[level]) return adminLayerObjs[level];
+    const cfg = ADMIN_LAYER_CONFIG[level];
+    try {
+        const res = await fetch(cfg.url);
+        if (!res.ok) throw new Error('Failed to fetch');
+        const data = await res.json();
+        
+        data.features.forEach(f => {
+            let name = '';
+            let type = '';
+            let subText = '';
+            let lat = null;
+            let lng = null;
+            
+            if (f.geometry && f.geometry.type === 'Polygon') {
+                const coords = f.geometry.coordinates[0];
+                let sumLat = 0, sumLng = 0;
+                coords.forEach(c => { sumLat += c[1]; sumLng += c[0]; });
+                lat = sumLat / coords.length;
+                lng = sumLng / coords.length;
+            } else if (f.geometry && f.geometry.type === 'MultiPolygon') {
+                const coords = f.geometry.coordinates[0][0];
+                let sumLat = 0, sumLng = 0;
+                coords.forEach(c => { sumLat += c[1]; sumLng += c[0]; });
+                lat = sumLat / coords.length;
+                lng = sumLng / coords.length;
+            }
+            
+            if (level === 'municipality') {
+                name = f.properties.gapa || f.properties.PALIKA || f.properties.NAME || f.properties.GaPa_NaPa || f.properties.palika || f.properties.name || '';
+                type = '🏛️ Municipality';
+                subText = f.properties.district || f.properties.DISTRICT || '';
+            } else if (level === 'district') {
+                name = f.properties.district || f.properties.DISTRICT || f.properties.NAME || f.properties.name || '';
+                type = '🏛️ District';
+                subText = f.properties.province || f.properties.PROVINCE || '';
+            } else if (level === 'province') {
+                name = f.properties.province || f.properties.PROVINCE || f.properties.NAME || f.properties.name || '';
+                type = '🏛️ Province';
+                subText = 'Nepal';
+            } else if (level === 'ward') {
+                name = f.properties.WARD || f.properties.Ward || f.properties.ward || f.properties.NAME || f.properties.name || '';
+                type = '📍 Ward';
+                subText = f.properties.district || f.properties.DISTRICT || '';
+            } else if (level === 'country') {
+                name = f.properties.NAME || f.properties.name || 'Nepal';
+                type = '🏛️ Country';
+                subText = '';
+            }
+            
+            if (name && name !== 'Unknown' && name !== '' && name !== 'Nepal') {
+                allPlaces.push({ 
+                    name: name, 
+                    type: type, 
+                    subText: subText, 
+                    lat: lat, 
+                    lng: lng,
+                    level: level,
+                    fullData: f
+                });
+            }
+        });
+        
+        const layer = L.geoJSON(data, {
+            style: () => ({
+                color: cfg.color,
+                weight: cfg.weight,
+                fillColor: cfg.color,
+                fillOpacity: cfg.fillOpacity,
+                dashArray: cfg.dash || null
+            }),
+            onEachFeature: function(feature, lyr) {
+                let name = 'Unknown';
+                let parent = '';
+                let type = '';
+                let ward = '';
+                let hq = '';
+                let provinceNo = '';
+                
+                if (level === 'country') {
+                    name = feature.properties.NAME || feature.properties.name || 'Nepal';
+                } else if (level === 'province') {
+                    name = feature.properties.province || feature.properties.PROVINCE || feature.properties.NAME || feature.properties.name || 'Unknown Province';
+                    parent = 'Nepal';
+                    provinceNo = feature.properties.province_no || feature.properties.PROVINCE_NO || '';
+                    hq = feature.properties.headquarter || feature.properties.HEADQUARTER || feature.properties.HEADQUARTERS || feature.properties.HQ || feature.properties.province_hq || '';
+                } else if (level === 'district') {
+                    name = feature.properties.district || feature.properties.DISTRICT || feature.properties.NAME || feature.properties.name || 'Unknown District';
+                    parent = feature.properties.province || feature.properties.PROVINCE || feature.properties.PR_NAME || '';
+                    provinceNo = feature.properties.province_no || feature.properties.PROVINCE_NO || '';
+                    hq = feature.properties.headquarter || feature.properties.HEADQUARTER || feature.properties.HEADQUARTERS || feature.properties.HQ || feature.properties.district_hq || feature.properties.DISTRICT_HQ || '';
+                } else if (level === 'municipality') {
+                    name = feature.properties.gapa || feature.properties.PALIKA || feature.properties.NAME || feature.properties.GaPa_NaPa || feature.properties.palika || feature.properties.name || 'Unknown Municipality';
+                    parent = feature.properties.district || feature.properties.DISTRICT || feature.properties.District || '';
+                    type = feature.properties.typegn || feature.properties.TYPE || feature.properties.type || feature.properties.Type_GN || '';
+                } else if (level === 'ward') {
+                    name = feature.properties.WARD || feature.properties.Ward || feature.properties.ward || feature.properties.NAME || feature.properties.name || 'Unknown Ward';
+                    parent = feature.properties.district || feature.properties.DISTRICT || feature.properties.District || '';
+                    type = feature.properties.gapa || feature.properties.PALIKA || feature.properties.palika || '';
+                }
+                
+                let tooltipHTML = `<div style="font-family:'Inter',sans-serif;padding:6px 10px;font-size:0.8rem;max-width:250px;background:white;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.15);">
+                    <strong style="color:var(--primary);font-size:0.9rem;">${name}</strong>`;
+                if (parent) tooltipHTML += `<br><span style="color:#555;font-size:0.7rem;">🏛️ ${parent}</span>`;
+                if (provinceNo && level !== 'province') tooltipHTML += `<br><span style="color:#888;font-size:0.65rem;">📍 Province No: ${provinceNo}</span>`;
+                if (hq) tooltipHTML += `<br><span style="color:#888;font-size:0.65rem;">📍 HQ: ${hq}</span>`;
+                if (type) tooltipHTML += `<br><span style="color:#888;font-size:0.65rem;">📌 ${type}</span>`;
+                if (ward) tooltipHTML += `<br><span style="color:#888;font-size:0.65rem;">📍 Ward: ${ward}</span>`;
+                tooltipHTML += `</div>`;
+                
+                lyr.bindTooltip(tooltipHTML, {sticky: true, className: 'admin-tooltip'});
+                lyr.on('mouseover', function () { 
+                    this.setStyle({ weight: cfg.weight + 2, fillOpacity: cfg.fillOpacity + 0.14 }); 
+                });
+                lyr.on('mouseout', function () { 
+                    adminLayerObjs[level].resetStyle(this); 
+                });
+            }
+        });
+        adminLayerObjs[level] = layer;
+        return layer;
+    } catch (e) {
+        console.error(`Error loading ${level}:`, e);
+        return null;
+    }
+}
+
+async function toggleAdminLayer(level, checkbox) {
+    const chip = checkbox.closest('.layer-chip');
+    if (checkbox.checked) {
+        chip.classList.add('loading');
+        const layer = await loadAdminLayer(level);
+        if (layer) {
+            layer.addTo(map);
+            if (level === 'country' || level === 'province') layer.bringToBack();
+        } else {
+            checkbox.checked = false;
+        }
+        chip.classList.remove('loading');
+    } else if (adminLayerObjs[level]) {
+        map.removeLayer(adminLayerObjs[level]);
+    }
+}
+
+loadAdminLayer('country').then(l => { if (l) { l.addTo(map); l.bringToBack(); } });
+loadAdminLayer('district').then(l => { if (l) l.addTo(map); });
+
+// ─── VALIDATE DISTRICT ───
+function validateDistrict() {
+    const select = document.getElementById('districtSelect');
+    const error = document.getElementById('districtError');
+    if (select.value === '') {
+        error.style.display = 'block';
+        return false;
+    } else {
+        error.style.display = 'none';
+        return true;
+    }
+}
+
+function goToStep(step) {
+    if (step === 2 && currentStep === 1) {
+        if (!validateDistrict()) {
+            toast('⚠️ Please select a district first!');
+            return;
+        }
+    }
+    currentStep = step;
+    document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
+    document.querySelector(`.form-step[data-step="${step}"]`).classList.add('active');
+    document.querySelectorAll('.step-dot').forEach((d, i) => {
+        d.classList.remove('active', 'completed');
+        if (i + 1 === step) d.classList.add('active');
+        else if (i + 1 < step) d.classList.add('completed');
+    });
+}
+
+function switchFeature(feature) {
+    document.querySelectorAll('.feature-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('btn' + feature.charAt(0).toUpperCase() + feature.slice(1)).classList.add('active');
+    document.getElementById('exploreSection').classList.toggle('active', feature === 'explore');
+    document.getElementById('spatialSection').classList.toggle('active', feature === 'spatial');
+    if (feature === 'report') {
+        document.getElementById('tabForm').style.display = 'block';
+        document.querySelector('.tab-bar').style.display = 'flex';
+        document.querySelector('.search-box').style.display = 'block';
+    } else {
+        document.getElementById('tabForm').style.display = 'none';
+        document.querySelector('.tab-bar').style.display = 'none';
+        document.querySelector('.search-box').style.display = 'none';
+    }
+}
+
+function explorePlace(name, lat, lng) {
+    switchBaseMap('satellite');
+    map.flyTo([lat, lng], 16, { duration: 2 });
+    const marker = L.marker([lat, lng]).addTo(map);
+    marker.bindPopup(`<div style="font-family:'Inter',sans-serif;padding:6px;"><h3 style="color:#1C4620;margin:0;font-family:'Inter',sans-serif;">🏛️ ${name}</h3><p style="margin:0;font-size:0.85rem;color:#555;font-family:'Inter',sans-serif;">📍 Heritage Site - Satellite View</p></div>`).openPopup();
+    setTimeout(() => { map.removeLayer(marker); }, 8000);
+    toast(`🗺️ ${name} - Satellite View`);
+}
+
+function exploreTrek(name, lat, lng) {
+    switchBaseMap('topo');
+    map.flyTo([lat, lng], 14, { duration: 2 });
+    const marker = L.marker([lat, lng]).addTo(map);
+    const trek = TREKKING_SITES.find(t => t.name === name);
+    marker.bindPopup(`<div style="font-family:'Inter',sans-serif;padding:6px;"><h3 style="color:#1C4620;margin:0;font-family:'Inter',sans-serif;">🏔️ ${name}</h3><p style="margin:0;font-size:0.85rem;color:#555;font-family:'Inter',sans-serif;">📍 ${trek ? trek.district : 'Nepal'} - ${trek ? trek.difficulty : ''}</p><p style="margin:2px 0 0 0;font-size:0.7rem;color:#999;font-family:'Inter',sans-serif;">🗺️ Topographic View</p></div>`).openPopup();
+    setTimeout(() => { map.removeLayer(marker); }, 8000);
+    toast(`🏔️ ${name} - Topographic View`);
+}
+
+function switchBaseMap(type) {
+    Object.keys(baseMaps).forEach(key => {
+        try { map.removeLayer(baseMaps[key]); } catch(e) {}
+    });
+    baseMaps[type].addTo(map);
+    Object.values(adminLayerObjs).forEach(l => { if (l && map.hasLayer(l)) { l.bringToFront(); } });
+    document.querySelectorAll('.map-btn').forEach(b => b.classList.toggle('active', b.dataset.map === type));
+}
+
+const PLACES = [
+    {name:"Kathmandu", lat:27.7172, lng:85.3240, category:"City", district:"Kathmandu"},
+    {name:"Pokhara", lat:28.2096, lng:83.9856, category:"City", district:"Kaski"},
+    {name:"Lumbini", lat:27.4769, lng:83.2766, category:"Heritage", district:"Rupandehi"},
+    {name:"Chitwan", lat:27.5522, lng:84.4768, category:"Nature", district:"Chitwan"},
+    {name:"Everest", lat:27.9881, lng:86.9250, category:"Mountain", district:"Solukhumbu"},
+    {name:"Biratnagar", lat:26.4500, lng:87.2833, category:"City", district:"Morang"},
+    {name:"Dharan", lat:26.8167, lng:87.2833, category:"City", district:"Sunsari"},
+    {name:"Janakpur", lat:26.7288, lng:85.9264, category:"Heritage", district:"Dhanusa"},
+    {name:"Nepalgunj", lat:28.0667, lng:81.6167, category:"City", district:"Banke"},
+    {name:"Dhangadhi", lat:28.7000, lng:80.6000, category:"City", district:"Kailali"},
+    {name:"Karmidanda", lat:27.8500, lng:85.5500, category:"Village", district:"Sindhupalchok"},
+    {name:"Uttargaya", lat:27.9500, lng:85.6000, category:"Village", district:"Sindhupalchok"}
+];
+function findAnyPlace(searchTerm) {
+    if (!searchTerm) return null;
+    const term = searchTerm.toLowerCase().trim();
+    
+    // Search in all data sources
+    const allSources = [
+        ...PLACES.map(p => ({ ...p, source: 'PLACES' })),
+        ...TREKKING_SITES.map(t => ({ ...t, source: 'TREKKING' })),
+        ...allPlaces.map(p => ({ ...p, source: 'GeoJSON' }))
+    ];
+    
+    // Exact match first
+    let match = allSources.find(p => p.name.toLowerCase() === term);
+    if (match) return match;
+    
+    // Partial match
+    match = allSources.find(p => p.name.toLowerCase().includes(term));
+    if (match) return match;
+    
+    return null;
+}
+
+function searchPlace(q) {
+    const dd = document.getElementById('searchDropdown');
+    if (!q || q.length < 1) { dd.style.display = 'none'; return; }
+    
+    const query = q.toLowerCase().trim();
+    let results = [];
+    
+    allPlaces.forEach(p => {
+        if (p.name.toLowerCase().includes(query)) {
+            results.push({ 
+                name: p.name, 
+                type: p.type || '📍 Place', 
+                subText: p.subText || '', 
+                lat: p.lat, 
+                lng: p.lng,
+                level: p.level || 'place'
+            });
+        }
+    });
+    
+    NEPAL_DISTRICTS.forEach(d => {
+        if (d.toLowerCase().includes(query)) {
+            const exists = results.some(r => r.name === d && r.type === '🏛️ District');
+            if (!exists) {
+                let found = allPlaces.find(p => p.name === d && p.level === 'district');
+                results.push({ 
+                    name: d, 
+                    type: '🏛️ District', 
+                    subText: 'District of Nepal', 
+                    lat: found ? found.lat : null, 
+                    lng: found ? found.lng : null,
+                    level: 'district'
+                });
+            }
+        }
+    });
+    
+    PLACES.forEach(p => {
+        if (p.name.toLowerCase().includes(query) || p.district.toLowerCase().includes(query)) {
+            const exists = results.some(r => r.name === p.name && r.type === '📍 Place');
+            if (!exists) {
+                results.push({ 
+                    name: p.name, 
+                    type: '📍 Place', 
+                    subText: `${p.district} District`, 
+                    lat: p.lat, 
+                    lng: p.lng,
+                    level: 'place'
+                });
+            }
+        }
+    });
+    
+    TREKKING_SITES.forEach(t => {
+        if (t.name.toLowerCase().includes(query) || t.district.toLowerCase().includes(query)) {
+            const exists = results.some(r => r.name === t.name && r.type === '🏔️ Trek');
+            if (!exists) {
+                results.push({ 
+                    name: t.name, 
+                    type: '🏔️ Trek', 
+                    subText: `${t.district} · ${t.difficulty}`, 
+                    lat: t.lat, 
+                    lng: t.lng,
+                    level: 'trek'
+                });
+            }
+        }
+    });
+    
+    const uniqueResults = [];
+    const seen = new Set();
+    results.forEach(r => {
+        const key = r.name + r.type;
+        if (!seen.has(key)) { 
+            seen.add(key); 
+            uniqueResults.push(r); 
+        }
+    });
+    
+    uniqueResults.sort((a, b) => {
+        const aExact = a.name.toLowerCase() === query;
+        const bExact = b.name.toLowerCase() === query;
+        if (aExact && !bExact) return -1;
+        if (!aExact && bExact) return 1;
+        return a.name.localeCompare(b.name);
+    });
+    
+    const topResults = uniqueResults.slice(0, 25);
+    if (!topResults.length) { dd.style.display = 'none'; return; }
+    
+    let html = '';
+    topResults.forEach(r => {
+        const latAttr = r.lat || '';
+        const lngAttr = r.lng || '';
+        html += `<div class="search-item" onmousedown="selectSearchResult('${r.name.replace(/'/g,"\\'")}', ${latAttr}, ${lngAttr}, '${r.type.replace(/'/g,"\\'")}')">
+            <strong>${r.name}</strong>
+            <span style="font-size:0.7rem;color:var(--primary-light);font-weight:600;">${r.type}</span>
+            ${r.subText ? `<span class="sub-text">${r.subText}</span>` : ''}
+            ${r.lat && r.lng ? `<span class="sub-text" style="color:#888;">📍 ${r.lat.toFixed(4)}, ${r.lng.toFixed(4)}</span>` : ''}
+        </div>`;
+    });
+    dd.innerHTML = html;
+    dd.style.display = 'block';
+}
+function closeDropdown() {
+    const dd = document.getElementById('searchDropdown');
+    if (dd) dd.style.display = 'none';
+}
+function selectSearchResult(name, lat, lng, type) {
+    document.getElementById('placeSearch').value = name;
+    document.getElementById('searchDropdown').style.display = 'none';
+    
+    if (lat && lng) {
+        map.setView([lat, lng], 13, {animate: true});
+        pinLocation(lat, lng, name);
+        toast(`📍 ${name} - ${type}`);
+        return;
+    }
+    
+    let found = false;
+    PLACES.forEach(p => {
+        if (p.name.toLowerCase() === name.toLowerCase()) {
+            map.setView([p.lat, p.lng], 12, {animate: true});
+            pinLocation(p.lat, p.lng, p.name);
+            found = true;
+            toast(`📍 ${name} - ${type}`);
+        }
+    });
+    
+    if (!found) {
+        const foundPlace = allPlaces.find(p => p.name.toLowerCase() === name.toLowerCase() && p.lat && p.lng);
+        if (foundPlace) {
+            map.setView([foundPlace.lat, foundPlace.lng], 12, {animate: true});
+            pinLocation(foundPlace.lat, foundPlace.lng, foundPlace.name);
+            found = true;
+            toast(`📍 ${name} - ${type}`);
+        }
+    }
+    
+    if (!found) {
+        const districtFound = NEPAL_DISTRICTS.find(d => d.toLowerCase() === name.toLowerCase());
+        if (districtFound) {
+            const distPlace = allPlaces.find(p => p.name.toLowerCase() === name.toLowerCase() && p.level === 'district' && p.lat && p.lng);
+            if (distPlace) {
+                map.setView([distPlace.lat, distPlace.lng], 11, {animate: true});
+                pinLocation(distPlace.lat, distPlace.lng, distPlace.name);
+                toast(`📍 ${name} District`);
+                found = true;
+            } else {
+                map.setView([28.3949, 84.1240], 7);
+                toast(`📍 ${name} District - Showing Nepal overview`);
+                found = true;
+            }
+        }
+    }
+    
+    if (!found) {
+        toast(`📍 ${name} - ${type} (Location not found on map)`);
+        map.setView([28.3949, 84.1240], 7);
+    }
+}
+
+function pinLocation(lat, lng, name) {
+    selectedLat = lat;
+    selectedLng = lng;
+    if (tempMarker) map.removeLayer(tempMarker);
+    tempMarker = L.circleMarker([lat,lng], {
+        radius: 12,
+        color: '#1C4620',
+        fillColor: '#1C4620',
+        fillOpacity: 0.4,
+        weight: 3
+    }).addTo(map).bindPopup('<b>📍 Selected Location</b>').openPopup();
+    document.getElementById('coordBox').innerHTML = `📍 <b>Lat:</b> ${lat.toFixed(5)} &nbsp;|&nbsp; <b>Lng:</b> ${lng.toFixed(5)}`;
+    let foundDistrict = null;
+    for (const p of PLACES) {
+        const dist = turf.distance(turf.point([lng, lat]), turf.point([p.lng, p.lat]), {units: 'kilometers'});
+        if (dist < 2 && p.district) {
+            foundDistrict = p.district;
+            break;
+        }
+    }
+    if (foundDistrict && document.getElementById('districtSelect')) {
+        document.getElementById('districtSelect').value = foundDistrict;
+        validateDistrict();
+    }
+    document.getElementById('statusMsg').textContent = `📍 ${name || 'Location'} pinned — fill the form`;
+    toast('📍 Location pinned!');
+}
+
+function toggleType(el) {
+    el.classList.toggle('active');
+    const t = el.dataset.type;
+    const idx = selectedTypes.indexOf(t);
+    if (idx >= 0) selectedTypes.splice(idx, 1);
+    else selectedTypes.push(t);
+}
+
+function selectSafety(el) {
+    document.querySelectorAll('.safety-btn').forEach(b => b.classList.remove('active'));
+    selectedSafety = el.dataset.level;
+    el.classList.add('active');
+}
+
+function setStar(n) {
+    starValue = n;
+    document.querySelectorAll('.star-btn').forEach((s, i) => {
+        s.classList.toggle('active', i < n);
+    });
+}
+
+function handlePhoto(inp) {
+    if (inp.files && inp.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            photoDataURL = e.target.result;
+            document.getElementById('photoPreview').src = photoDataURL;
+            document.getElementById('photoPreviewWrap').style.display = 'block';
+            document.getElementById('photoLabel').textContent = '✅ ' + inp.files[0].name;
+        };
+        reader.readAsDataURL(inp.files[0]);
+    }
+}
+
+function openLightbox(src) {
+    document.getElementById('lightboxImg').src = src;
+    document.getElementById('photoLightbox').classList.add('show');
+}
+
+function closeLightbox() {
+    document.getElementById('photoLightbox').classList.remove('show');
+}
+
+function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById('tabForm').style.display = tab === 'form' ? 'block' : 'none';
+    document.getElementById('tabBtnForm').classList.toggle('active', tab === 'form');
+    document.getElementById('navForm').classList.toggle('active', tab === 'form');
+}
+
+async function submitReport() {
+    if (!selectedLat || !selectedLng) {
+        toast('⚠️ Please select a location first!');
+        goToStep(1);
+        return;
+    }
+    if (!selectedSafety) {
+        toast('⚠️ Please select a safety level!');
+        goToStep(2);
+        return;
+    }
+    if (!selectedTypes.length) {
+        toast('⚠️ Please select at least one report type!');
+        goToStep(2);
+        return;
+    }
+
+    const report = {
+        id: ++_nextId,
+        lat: selectedLat,
+        lng: selectedLng,
+        place: document.getElementById('districtSelect').value || 'Unknown',
+        types: selectedTypes.slice(),
+        safety: selectedSafety,
+        stars: starValue,
+        desc: document.getElementById('descInput').value.trim() || '',
+        name: document.getElementById('nameInput').value.trim() || 'Anonymous',
+        district: document.getElementById('districtSelect').value || 'Unknown',
+        date: new Date().toLocaleDateString('en-GB'),
+        time: new Date().toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'}),
+        photo: photoDataURL || null
+    };
+
+    reports.push(report);
+    saveReportsLocal();
+    addMarkerToMap(report);
+    resetForm();
+    renderRecordsList();
+    updateRecordsStats();
+    updateNavCount();
+    toast('✅ Report submitted successfully!');
+    openRecords();
+}
+
+function addMarkerToMap(report) {
+    const color = report.safety === 'safe' ? '#2E7D32' : report.safety === 'moderate' ? '#F57F17' : '#C62828';
+    const starsHtml = '★'.repeat(report.stars) + '☆'.repeat(5 - report.stars);
+    const safetyLabels = {safe:'🟢 Safe', moderate:'🟡 Moderate', danger:'🔴 Danger'};
+    
+    const html = `
+        <div style="font-family:'Inter',sans-serif;min-width:200px">
+            <div style="font-size:1rem;font-weight:700">📍 ${report.district} District</div>
+            <div style="font-size:0.7rem;color:#555">${report.types.join(', ')} · ${report.date}</div>
+            <div style="font-size:0.7rem;color:#888">🏛️ ${report.district}</div>
+            <hr style="margin:4px 0">
+            <div><b>Safety:</b> ${safetyLabels[report.safety]}</div>
+            <div><b>Rating:</b> <span style="color:#F9A825">${starsHtml}</span></div>
+            ${report.desc ? `<div style="margin-top:4px"><i>"${report.desc}"</i></div>` : ''}
+            <div style="font-size:0.7rem;color:#777">By: ${report.name}</div>
+            ${report.photo ? `<img src="${report.photo}" style="max-width:100%;max-height:120px;border-radius:6px;margin-top:4px;cursor:pointer" onclick="openLightbox('${report.photo}')"/>` : ''}
+        </div>
+    `;
+    
+    const m = L.circleMarker([report.lat, report.lng], {
+        radius: 14,
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.85,
+        weight: 3
+    }).addTo(map);
+    m.bindPopup(html, {maxWidth: 280});
+    m.on('mouseover', function() { m.openPopup(); });
+    markerMap[report.id] = m;
+}
+
+function resetForm() {
+    selectedLat = null; selectedLng = null;
+    selectedSafety = null;
+    starValue = 0;
+    photoDataURL = null;
+    selectedTypes = [];
+    document.getElementById('descInput').value = '';
+    document.getElementById('nameInput').value = '';
+    document.getElementById('placeSearch').value = '';
+    document.getElementById('coordBox').innerHTML = '📍 No location selected — search or click on the map';
+    document.getElementById('photoLabel').textContent = '📷 Click to attach a photo (optional)';
+    document.getElementById('photoInput').value = '';
+    document.getElementById('photoPreviewWrap').style.display = 'none';
+    document.getElementById('photoPreview').src = '';
+    document.querySelectorAll('.safety-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.star-btn').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('active'));
+    document.getElementById('districtSelect').value = '';
+    document.getElementById('districtError').style.display = 'none';
+    if (tempMarker) map.removeLayer(tempMarker);
+    goToStep(1);
+}
+
+function flyTo(lat, lng) {
+    map.setView([lat, lng], 13, {animate: true});
+    closeRecords();
+}
+
+function askDelete(id, place) {
+    deleteId = id;
+    document.getElementById('confirmMsg').textContent = `Delete the report for "${place}"? This cannot be undone.`;
+    document.getElementById('confirmOverlay').classList.add('show');
+}
+
+function closeConfirm() {
+    document.getElementById('confirmOverlay').classList.remove('show');
+    deleteId = null;
+}
+
+async function confirmDelete() {
+    if (!deleteId) return;
+    if (markerMap[deleteId]) {
+        map.removeLayer(markerMap[deleteId]);
+        delete markerMap[deleteId];
+    }
+    reports = reports.filter(r => r.id !== deleteId);
+    saveReportsLocal();
+    deleteId = null;
+    document.getElementById('confirmOverlay').classList.remove('show');
+    renderRecordsList();
+    updateRecordsStats();
+    updateNavCount();
+    toast('🗑 Report deleted successfully.');
+}
+
+function downloadCSV() {
+    let rows = [];
+    if (reports.length) {
+        const headers = ['ID','District','Latitude','Longitude','Types','Safety','Stars','Description','Name','Date','Time','Photo'];
+        rows.push(headers.join(','));
+        reports.forEach(r => {
+            const row = [
+                r.id,
+                `"${r.district || 'Unknown'}"`,
+                r.lat.toFixed(6),
+                r.lng.toFixed(6),
+                `"${r.types.join(' | ').replace(/"/g,'""')}"`,
+                r.safety,
+                r.stars,
+                `"${r.desc.replace(/"/g,'""').replace(/\n/g,' ')}"`,
+                `"${r.name.replace(/"/g,'""')}"`,
+                r.date,
+                r.time,
+                r.photo ? 'Yes' : 'No'
+            ];
+            rows.push(row.join(','));
+        });
+    }
+    if (bufferData.length) {
+        rows.push('');
+        rows.push('"=== SPATIAL TOOLS DATA ==="');
+        const bufferHeaders = ['Type','Data','Result'];
+        rows.push(bufferHeaders.join(','));
+        bufferData.forEach(b => {
+            const values = Object.values(b);
+            const row = values.map(v => `"${String(v).replace(/"/g,'""').substring(0,500)}"`).join(',');
+            rows.push(row);
+        });
+    }
+    if (rows.length <= 1) {
+        toast('No data to download.');
+        return;
+    }
+    const blob = new Blob([rows.join('\n')], {type: 'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `SafeNepal_Data_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('✅ Data downloaded successfully!');
+}
+
+function updateNavCount() {
+    const el = document.getElementById('reportCount');
+    if (el) el.textContent = reports.length;
+}
+
+function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(window.toastTimeout);
+    window.toastTimeout = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+async function loadReports() {
+    reports = loadReportsLocal();
+    reports.forEach(r => addMarkerToMap(r));
+    renderRecordsList();
+    updateRecordsStats();
+    updateNavCount();
+    if (reports.length > 0) {
+        toast(`📋 Loaded ${reports.length} saved reports`);
+    }
+}
+
+function populateDistricts() {
+    const select = document.getElementById('districtSelect');
+    const sortedDistricts = [...NEPAL_DISTRICTS].sort();
+    sortedDistricts.forEach(district => {
+        const option = document.createElement('option');
+        option.value = district;
+        option.textContent = district;
+        select.appendChild(option);
+    });
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        deactivateTool();
+        closeLightbox();
+        closeConfirm();
+        closeAbout();
+        closeRecords();
+        closeRoutePanel();
+    }
+});
+
+populateDistricts();
+
+setTimeout(() => {
+    document.getElementById('splash').classList.add('gone');
+    setTimeout(() => {
+        const s = document.getElementById('splash');
+        if (s) s.remove();
+    }, 700);
+}, 2000);
+
+setTimeout(() => {
+    document.getElementById('mapHint').classList.add('hide');
+}, 9000);
+
+setTimeout(loadReports, 1000);
+
+console.log('🇳🇵 Safe Nepal Final Version Loaded!');
+console.log('📍 77 Districts of Nepal');
+console.log('🗺️ Route Planner Ready!');
+
+// ─── ROUTE PLANNER FUNCTIONS ───
+function openRoutePanel() {
+    document.getElementById('routePanel').style.display = 'block';
+    document.body.style.overflow = 'auto';
+}
+
+function closeRoutePanel() {
+    document.getElementById('routePanel').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+function setRoute(start, end) {
+    document.getElementById('routeStart').value = start;
+    document.getElementById('routeEnd').value = end;
+    calculateRoute();
+}
+
+function useCurrentLocation() {
+    // Check if browser supports geolocation
+    if (!navigator.geolocation) {
+        toast('⚠️ Your browser does not support geolocation.');
+        return;
+    }
+    
+    toast('📍 Getting your location...');
+    
+    navigator.geolocation.getCurrentPosition(
+        // Success callback
+        function(pos) {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            
+            // Try to find nearest place name
+            let nearest = null;
+            let minDist = Infinity;
+            
+            // Search in PLACES
+            PLACES.forEach(p => {
+                const dist = turf.distance(
+                    turf.point([lng, lat]),
+                    turf.point([p.lng, p.lat]),
+                    {units: 'kilometers'}
+                );
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearest = p.name;
+                }
+            });
+            
+            // Search in TREKKING_SITES
+            TREKKING_SITES.forEach(t => {
+                const dist = turf.distance(
+                    turf.point([lng, lat]),
+                    turf.point([t.lng, t.lat]),
+                    {units: 'kilometers'}
+                );
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearest = t.name;
+                }
+            });
+            
+            // Search in allPlaces (GeoJSON)
+            allPlaces.forEach(p => {
+                if (p.lat && p.lng) {
+                    const dist = turf.distance(
+                        turf.point([lng, lat]),
+                        turf.point([p.lng, p.lat]),
+                        {units: 'kilometers'}
+                    );
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearest = p.name;
+                    }
+                }
+            });
+            
+            // ✅ SET THE START BOX VALUE
+            const startInput = document.getElementById('routeStart');
+            
+            if (nearest && minDist < 10) {
+                // If within 10km of a known place, use the place name
+                startInput.value = nearest;
+                toast(`📍 Location: ${nearest} (${minDist.toFixed(1)} km away)`);
+            } else {
+                // Otherwise use coordinates
+                startInput.value = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                toast(`📍 Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+            }
+            
+            // Pin on map
+            pinLocation(lat, lng, 'Your Location');
+            map.setView([lat, lng], 14);
+            
+            console.log('✅ Location set:', startInput.value);
+        },
+        // Error callback
+        function(err) {
+            console.error('Geolocation error:', err);
+            
+            let msg = '⚠️ Unable to get location. ';
+            if (err.code === 1) {
+                msg += 'Please allow location access.';
+            } else if (err.code === 2) {
+                msg += 'Location unavailable. Try again.';
+            } else if (err.code === 3) {
+                msg += 'Location timeout. Try again.';
+            }
+            toast(msg);
+            
+            // ✅ FALLBACK: Set Kathmandu as default
+            document.getElementById('routeStart').value = 'Kathmandu';
+            toast('📍 Using Kathmandu as default');
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 60000
+        }
+    );
+}
+
+function calculateRoute() {
+    const start = document.getElementById('routeStart').value.trim();
+    const end = document.getElementById('routeEnd').value.trim();
+    
+    if (!start || !end) {
+        toast('⚠️ Please enter both start and end points!');
+        return;
+    }
+    
+    if (start.toLowerCase() === end.toLowerCase()) {
+        toast('⚠️ Start and end points must be different!');
+        return;
+    }
+    
+    // ─── FIRST: TRY TO FIND THE PLACE IN SEARCH ───
+    // This will check if the place exists in our data
+    let startFound = false;
+    let endFound = false;
+    
+    // Check if start exists in any of our data sources
+    const allKnownPlaces = [...PLACES, ...TREKKING_SITES, ...allPlaces];
+    
+    const startMatch = allKnownPlaces.find(p => p.name.toLowerCase() === start.toLowerCase());
+    const endMatch = allKnownPlaces.find(p => p.name.toLowerCase() === end.toLowerCase());
+    
+    if (startMatch) {
+        toast(`✅ Found: ${startMatch.name}`);
+        startFound = true;
+    } else {
+        // Try partial match
+        const partialStart = allKnownPlaces.find(p => p.name.toLowerCase().includes(start.toLowerCase()));
+        if (partialStart) {
+            toast(`📍 Did you mean: ${partialStart.name}? Using this.`);
+            document.getElementById('routeStart').value = partialStart.name;
+            startFound = true;
+        }
+    }
+    
+    if (endMatch) {
+        toast(`✅ Found: ${endMatch.name}`);
+        endFound = true;
+    } else {
+        const partialEnd = allKnownPlaces.find(p => p.name.toLowerCase().includes(end.toLowerCase()));
+        if (partialEnd) {
+            toast(`📍 Did you mean: ${partialEnd.name}? Using this.`);
+            document.getElementById('routeEnd').value = partialEnd.name;
+            endFound = true;
+        }
+    }
+    
+    // If not found, try searching in GeoJSON data
+    if (!startFound) {
+        const geoStart = allPlaces.find(p => p.name.toLowerCase().includes(start.toLowerCase()));
+        if (geoStart) {
+            toast(`📍 Found in GeoJSON: ${geoStart.name}`);
+            document.getElementById('routeStart').value = geoStart.name;
+            startFound = true;
+        }
+    }
+    
+    if (!endFound) {
+        const geoEnd = allPlaces.find(p => p.name.toLowerCase().includes(end.toLowerCase()));
+        if (geoEnd) {
+            toast(`📍 Found in GeoJSON: ${geoEnd.name}`);
+            document.getElementById('routeEnd').value = geoEnd.name;
+            endFound = true;
+        }
+    }
+    
+    // Now find coordinates
+    let startCoords = findPlaceCoords(start);
+    let endCoords = findPlaceCoords(end);
+    
+    // If still not found, try with the matched names
+    if (!startCoords && startMatch) {
+        startCoords = findPlaceCoords(startMatch.name);
+    }
+    if (!endCoords && endMatch) {
+        endCoords = findPlaceCoords(endMatch.name);
+    }
+    
+    // Final fallback - search all places
+    if (!startCoords) {
+        for (const p of allPlaces) {
+            if (p.name.toLowerCase().includes(start.toLowerCase()) && p.lat && p.lng) {
+                startCoords = { lat: p.lat, lng: p.lng, name: p.name };
+                toast(`📍 Using: ${p.name}`);
+                document.getElementById('routeStart').value = p.name;
+                break;
+            }
+        }
+    }
+    
+    if (!endCoords) {
+        for (const p of allPlaces) {
+            if (p.name.toLowerCase().includes(end.toLowerCase()) && p.lat && p.lng) {
+                endCoords = { lat: p.lat, lng: p.lng, name: p.name };
+                toast(`📍 Using: ${p.name}`);
+                document.getElementById('routeEnd').value = p.name;
+                break;
+            }
+        }
+    }
+    
+    if (!startCoords) {
+        toast(`⚠️ Could not find "${start}". Please try a different place.`);
+        return;
+    }
+    if (!endCoords) {
+        toast(`⚠️ Could not find "${end}". Please try a different place.`);
+        return;
+    }
+
+    
+    // Check if start or end is a trekking destination (using global trekDestinations)
+    const isStartTrek = trekDestinations.some(t => start.toLowerCase().includes(t.name.toLowerCase()));
+    const isEndTrek = trekDestinations.some(t => end.toLowerCase().includes(t.name.toLowerCase()));
+    const isTrekRoute = isStartTrek || isEndTrek;
+    
+    const isHeritage = heritageSites.some(h => start.toLowerCase().includes(h.name.toLowerCase()) || end.toLowerCase().includes(h.name.toLowerCase()));
+    
+    // ─── REAL ROAD DISTANCES ───
+    const roadDistances = {
+        'kathmandu,everest base camp': 475,
+        'everest base camp,kathmandu': 475,
+        'kathmandu,everest': 475,
+        'everest,kathmandu': 475,
+        'kathmandu,annapurna base camp': 230,
+        'annapurna base camp,kathmandu': 230,
+        'kathmandu,annapurna': 230,
+        'annapurna,kathmandu': 230,
+        'kathmandu,langtang valley': 156,
+        'langtang valley,kathmandu': 156,
+        'kathmandu,langtang': 156,
+        'langtang,kathmandu': 156,
+        'kathmandu,manaslu circuit': 320,
+        'manaslu circuit,kathmandu': 320,
+        'kathmandu,manaslu': 320,
+        'manaslu,kathmandu': 320,
+        'kathmandu,mustang': 475,
+        'mustang,kathmandu': 475,
+        'kathmandu,gokyo lakes': 490,
+        'gokyo lakes,kathmandu': 490,
+        'kathmandu,gokyo': 490,
+        'gokyo,kathmandu': 490,
+        'kathmandu,kanchenjunga base camp': 480,
+        'kanchenjunga base camp,kathmandu': 480,
+        'kathmandu,kanchenjunga': 480,
+        'kanchenjunga,kathmandu': 480,
+        'kathmandu,dolpo': 580,
+        'dolpo,kathmandu': 580,
+        'kathmandu,dolpa': 580,
+        'dolpa,kathmandu': 580,
+        'kathmandu,mardi himal': 230,
+        'mardi himal,kathmandu': 230,
+        'kathmandu,makalu base camp': 460,
+        'makalu base camp,kathmandu': 460,
+        'kathmandu,makalu': 460,
+        'makalu,kathmandu': 460,
+        'kathmandu,dhaulagiri circuit': 320,
+        'dhaulagiri circuit,kathmandu': 320,
+        'kathmandu,dhaulagiri': 320,
+        'dhaulagiri,kathmandu': 320,
+        'kathmandu,rara lake trek': 520,
+        'rara lake trek,kathmandu': 520,
+        'kathmandu,rara': 520,
+        'rara,kathmandu': 520,
+        'kathmandu,ganesh himal': 180,
+        'ganesh himal,kathmandu': 180,
+        'kathmandu,panch pokhari': 170,
+        'panch pokhari,kathmandu': 170,
+        'kathmandu,jomsom-muktinath': 475,
+        'jomsom-muktinath,kathmandu': 475,
+        'kathmandu,jomsom': 475,
+        'jomsom,kathmandu': 475,
+        'kathmandu,muktinath': 475,
+        'muktinath,kathmandu': 475,
+        'kathmandu,tilicho lake': 380,
+        'tilicho lake,kathmandu': 380,
+        'kathmandu,khopra danda': 230,
+        'khopra danda,kathmandu': 230,
+        'kathmandu,poon hill': 200,
+        'poon hill,kathmandu': 200,
+        'kathmandu,nar phu valley': 380,
+        'nar phu valley,kathmandu': 380,
+        'kathmandu,tsum valley': 320,
+        'tsum valley,kathmandu': 320,
+        'kathmandu,pokhara': 200,
+        'pokhara,kathmandu': 200,
+        'kathmandu,chitwan': 148,
+        'chitwan,kathmandu': 148,
+        'kathmandu,lumbini': 267,
+        'lumbini,kathmandu': 267,
+        'kathmandu,patan': 5,
+        'patan,kathmandu': 5,
+        'kathmandu,bhaktapur': 13,
+        'bhaktapur,kathmandu': 13,
+        'pokhara,annapurna base camp': 30,
+        'annapurna base camp,pokhara': 30,
+        'pokhara,annapurna': 30,
+        'annapurna,pokhara': 30,
+        'pokhara,mardi himal': 40,
+        'mardi himal,pokhara': 40,
+        'pokhara,poon hill': 50,
+        'poon hill,pokhara': 50,
+        'pokhara,khopra danda': 50,
+        'khopra danda,pokhara': 50,
+        'pokhara,mustang': 147,
+        'mustang,pokhara': 147,
+        'pokhara,jomsom': 147,
+        'jomsom,pokhara': 147,
+        'pokhara,muktinath': 147,
+        'muktinath,pokhara': 147,
+        'pokhara,dhaulagiri circuit': 147,
+        'dhaulagiri circuit,pokhara': 147,
+        'pokhara,dhaulagiri': 147,
+        'dhaulagiri,pokhara': 147,
+        'pokhara,manang': 230,
+        'manang,pokhara': 230,
+        'pokhara,tilicho lake': 230,
+        'tilicho lake,pokhara': 230,
+        'pokhara,nar phu valley': 230,
+        'nar phu valley,pokhara': 230,
+        'pokhara,lumbini': 174,
+        'lumbini,pokhara': 174,
+        'pokhara,chitwan': 120,
+        'chitwan,pokhara': 120,
+    };
+    
+    let roadDistance = null;
+    const routeKey = `${start.toLowerCase()},${end.toLowerCase()}`;
+    const reverseKey = `${end.toLowerCase()},${start.toLowerCase()}`;
+    
+    if (roadDistances[routeKey]) {
+        roadDistance = roadDistances[routeKey];
+    } else if (roadDistances[reverseKey]) {
+        roadDistance = roadDistances[reverseKey];
+    }
+    
+    const from = turf.point([startCoords.lng, startCoords.lat]);
+    const to = turf.point([endCoords.lng, endCoords.lat]);
+    const straightDistance = turf.distance(from, to, {units: 'kilometers'});
+    
+    if (!roadDistance) {
+        let multiplier = 1.5;
+        if (isTrekRoute && (start.toLowerCase().includes('everest') || start.toLowerCase().includes('dolpo') || start.toLowerCase().includes('rara'))) {
+            multiplier = 2.2;
+        } else if (isTrekRoute) {
+            multiplier = 1.8;
+        } else if (isHeritage) {
+            multiplier = 1.3;
+        }
+        roadDistance = Math.round(straightDistance * multiplier);
+    }
+    
+    let effectiveSpeed = 0;
+    let via = '';
+    let terrain = '';
+    let days = 1;
+    let restStops = 0;
+    let breakTime = 0;
+    let totalHours = 0;
+    let timeStr = '';
+    
+    const knownSpeeds = {
+        'kathmandu,pokhara': { speed: 35, via: 'Prithvi Highway', terrain: 'Hilly' },
+        'pokhara,kathmandu': { speed: 35, via: 'Prithvi Highway', terrain: 'Hilly' },
+        'kathmandu,everest': { speed: 20, via: 'BP Highway + Solu Road', terrain: 'Mountain' },
+        'kathmandu,annapurna': { speed: 22, via: 'Prithvi Highway', terrain: 'Hilly' },
+        'kathmandu,langtang': { speed: 25, via: 'Prithvi + Trishuli Road', terrain: 'Hilly' },
+        'kathmandu,manaslu': { speed: 20, via: 'Prithvi Highway', terrain: 'Hilly' },
+        'kathmandu,mustang': { speed: 22, via: 'Prithvi + Kaligandaki', terrain: 'Mountain' },
+        'kathmandu,dolpo': { speed: 18, via: 'Prithvi + Karnali Highway', terrain: 'Mountain' },
+        'kathmandu,rara': { speed: 18, via: 'Prithvi + Karnali Highway', terrain: 'Mountain' },
+        'kathmandu,chitwan': { speed: 35, via: 'Prithvi + Narayangadh', terrain: 'Hilly' },
+        'kathmandu,lumbini': { speed: 30, via: 'Tribhuvan + Mahendra', terrain: 'Hilly+Terai' },
+        'kathmandu,patan': { speed: 20, via: 'Ring Road', terrain: 'Urban' },
+        'kathmandu,bhaktapur': { speed: 25, via: 'Arnik Highway', terrain: 'Hilly' },
+        'pokhara,mustang': { speed: 22, via: 'Kaligandaki Corridor', terrain: 'Mountain' },
+        'pokhara,jomsom': { speed: 22, via: 'Kaligandaki Corridor', terrain: 'Mountain' },
+        'pokhara,annapurna': { speed: 20, via: 'Local Road', terrain: 'Hilly' },
+    };
+    
+    let routeData = null;
+    const speedKey = `${start.toLowerCase()},${end.toLowerCase()}`;
+    const speedReverse = `${end.toLowerCase()},${start.toLowerCase()}`;
+    
+    if (knownSpeeds[speedKey]) {
+        routeData = knownSpeeds[speedKey];
+    } else if (knownSpeeds[speedReverse]) {
+        routeData = knownSpeeds[speedReverse];
+    }
+    
+    if (routeData) {
+        effectiveSpeed = routeData.speed;
+        via = routeData.via;
+        terrain = routeData.terrain;
+    } else {
+        if (isTrekRoute) {
+            effectiveSpeed = 20;
+            terrain = '⛰️ Trekking Route';
+            via = getRouteVia(start, end);
+        } else if (isHeritage) {
+            effectiveSpeed = 30;
+            terrain = '🏛️ Heritage Route';
+            via = getRouteVia(start, end);
+        } else {
+            effectiveSpeed = 30;
+            terrain = '🌄 Mixed Terrain';
+            via = getRouteVia(start, end);
+        }
+    }
+    
+    totalHours = roadDistance / effectiveSpeed;
+    if (isTrekRoute) {
+        totalHours *= 1.2;
+    }
+    if (totalHours > 2) {
+        restStops = Math.floor(totalHours / 3);
+        breakTime = restStops * 0.75;
+        totalHours += breakTime;
+    }
+    if (totalHours > 10) {
+        days = Math.ceil(totalHours / 9);
+        totalHours += (days - 1) * 10;
+    }
+    
+    const finalHours = Math.floor(totalHours);
+    const finalMinutes = Math.round((totalHours - finalHours) * 60);
+    
+    if (days > 1) {
+        const remainingHours = totalHours - (days - 1) * 10;
+        const h = Math.floor(remainingHours);
+        const m = Math.round((remainingHours - h) * 60);
+        timeStr = `${days} day${days > 1 ? 's' : ''} ${h} hr ${m} min`;
+    } else {
+        timeStr = `${finalHours} hr ${finalMinutes} min`;
+    }
+    
+    const isTrekDisplay = isTrekRoute ? '🏔️ Trekking Destination' : isHeritage ? '🏛️ World Heritage Site' : '📍 Place';
+    
+    document.getElementById('routeResults').style.display = 'block';
+    document.getElementById('routeSummary').innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;">
+            <div style="text-align:center;padding:12px;background:var(--bg);border-radius:8px;">
+                <div style="font-size:0.7rem;color:var(--text-secondary);">Road Distance</div>
+                <div style="font-size:1.2rem;font-weight:700;color:var(--primary);">${roadDistance.toFixed(0)} km</div>
+                <div style="font-size:0.6rem;color:var(--text-secondary);">Straight: ${straightDistance.toFixed(0)} km</div>
+            </div>
+            <div style="text-align:center;padding:12px;background:var(--bg);border-radius:8px;">
+                <div style="font-size:0.7rem;color:var(--text-secondary);">Est. Time</div>
+                <div style="font-size:1rem;font-weight:700;color:var(--blue);">${timeStr}</div>
+                ${days > 1 ? `<div style="font-size:0.65rem;color:var(--red);">⚠️ ${days} day journey</div>` : ''}
+            </div>
+            <div style="text-align:center;padding:12px;background:var(--bg);border-radius:8px;">
+                <div style="font-size:0.7rem;color:var(--text-secondary);">Avg Speed</div>
+                <div style="font-size:1.2rem;font-weight:700;color:var(--orange);">${effectiveSpeed.toFixed(1)} km/h</div>
+                <div style="font-size:0.6rem;color:var(--text-secondary);">${terrain}</div>
+            </div>
+            <div style="text-align:center;padding:12px;background:var(--bg);border-radius:8px;">
+                <div style="font-size:0.7rem;color:var(--text-secondary);">Route Type</div>
+                <div style="font-size:0.8rem;font-weight:700;color:var(--purple);">${isTrekDisplay}</div>
+            </div>
+        </div>
+        <div style="margin-top:8px;padding:8px 12px;background:#E3F2FD;border-radius:6px;text-align:center;font-size:0.8rem;color:var(--blue);">
+            🛣️ ${via}
+            ${restStops > 0 ? ` | ☕ ${restStops} rest stops` : ''}
+            ${days > 1 ? ` | 🏨 Overnight stay recommended` : ''}
+        </div>
+    `;
+    
+    drawRoute(startCoords, endCoords);
+    
+    const routeList = document.getElementById('routeList');
+    const terrainIcon = terrain.includes('Mountain') ? '⛰️' : terrain.includes('Hilly') ? '🏔️' : '🌾';
+    routeList.innerHTML = `
+        <div style="padding:10px 0;border-bottom:1px solid var(--border);">
+            <div style="font-weight:700;font-size:0.95rem;">${isTrekDisplay === '🏔️ Trekking Destination' ? '🥾' : '🏛️'} ${start} → ${end}</div>
+            <div style="color:#888;font-size:0.85rem;margin-top:4px;">
+                📏 Road: ${roadDistance.toFixed(0)} km · ⏱️ ${timeStr}
+            </div>
+            <div style="color:#555;font-size:0.8rem;margin-top:4px;">
+                🛣️ ${via}
+            </div>
+            <div style="color:#888;font-size:0.7rem;margin-top:4px;">
+                ${terrainIcon} ${terrain} · ${effectiveSpeed.toFixed(1)} km/h
+            </div>
+            ${days > 1 ? `
+                <div style="background:#FFF8E1;padding:6px 10px;border-radius:6px;margin-top:6px;font-size:0.7rem;color:var(--orange);">
+                    ⚠️ ${days} day journey - Plan overnight stay
+                </div>
+            ` : ''}
+        </div>
+    `;
+    
+    document.getElementById('routeStats').innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div style="padding:8px 12px;background:var(--bg);border-radius:6px;">
+                <span style="color:var(--text-secondary);">Start:</span> <strong>${start}</strong>
+            </div>
+            <div style="padding:8px 12px;background:var(--bg);border-radius:6px;">
+                <span style="color:var(--text-secondary);">End:</span> <strong>${end}</strong>
+            </div>
+            <div style="padding:8px 12px;background:var(--bg);border-radius:6px;">
+                <span style="color:var(--text-secondary);">Distance:</span> ${roadDistance.toFixed(0)} km
+            </div>
+            <div style="padding:8px 12px;background:var(--bg);border-radius:6px;">
+                <span style="color:var(--text-secondary);">Time:</span> ${timeStr}
+            </div>
+            ${days > 1 ? `
+                <div style="padding:8px 12px;background:#FFF8E1;border-radius:6px;grid-column:span 2;text-align:center;border:1px solid var(--orange);">
+                    ⚠️ <strong>${days} day journey</strong>
+                </div>
+            ` : ''}
+        </div>
+    `;
+    
+    toast(`🗺️ ${start} → ${end}: ${roadDistance.toFixed(0)} km, ${timeStr}`);
+}
+
+function findPlaceCoords(name) {
+    if (!name) return null;
+    const searchName = name.toLowerCase().trim();
+    
+    for (const p of PLACES) {
+        if (p.name.toLowerCase() === searchName) {
+            return { lat: p.lat, lng: p.lng, name: p.name };
+        }
+    }
+    for (const t of TREKKING_SITES) {
+        if (t.name.toLowerCase() === searchName) {
+            return { lat: t.lat, lng: t.lng, name: t.name };
+        }
+    }
+    for (const p of allPlaces) {
+        if (p.name.toLowerCase() === searchName && p.lat && p.lng) {
+            return { lat: p.lat, lng: p.lng, name: p.name };
+        }
+    }
+    for (const d of NEPAL_DISTRICTS) {
+        if (d.toLowerCase() === searchName) {
+            const found = allPlaces.find(p => p.name.toLowerCase() === searchName && p.level === 'district' && p.lat && p.lng);
+            if (found) {
+                return { lat: found.lat, lng: found.lng, name: found.name };
+            }
+        }
+    }
+    for (const p of allPlaces) {
+        if (p.name.toLowerCase().includes(searchName) && p.lat && p.lng) {
+            return { lat: p.lat, lng: p.lng, name: p.name };
+        }
+    }
+    return null;
+}
+
+function getRouteVia(start, end) {
+    const routes = {
+        'Kathmandu,Pokhara': 'Prithvi Highway',
+        'Pokhara,Kathmandu': 'Prithvi Highway',
+        'Kathmandu,Lumbini': 'Tribhuvan + Mahendra Highway',
+        'Lumbini,Kathmandu': 'Mahendra + Tribhuvan Highway',
+        'Kathmandu,Chitwan': 'Prithvi + Narayangadh Highway',
+        'Chitwan,Kathmandu': 'Narayangadh + Prithvi Highway',
+        'Pokhara,Jomsom': 'Siddhartha + Kali Gandaki',
+        'Jomsom,Pokhara': 'Kali Gandaki + Siddhartha',
+        'Kathmandu,Biratnagar': 'BP Highway + Mahendra Highway',
+        'Biratnagar,Kathmandu': 'Mahendra Highway + BP Highway',
+        'Kathmandu,Dolpa': 'Prithvi Highway + Karnali Highway',
+        'Dolpa,Kathmandu': 'Karnali Highway + Prithvi Highway',
+        'Kathmandu,Mustang': 'Prithvi Highway + Kaligandaki Corridor',
+        'Mustang,Kathmandu': 'Kaligandaki Corridor + Prithvi Highway',
+        'Pokhara,Mustang': 'Kaligandaki Corridor',
+        'Mustang,Pokhara': 'Kaligandaki Corridor',
+        'Kathmandu,Rara': 'Prithvi Highway + Karnali Highway',
+        'Rara,Kathmandu': 'Karnali Highway + Prithvi Highway',
+    };
+    const key = `${start},${end}`;
+    if (routes[key]) return routes[key];
+    const reverseKey = `${end},${start}`;
+    if (routes[reverseKey]) return routes[reverseKey];
+    
+    const eastNepal = ['Biratnagar', 'Dharan', 'Itahari', 'Kakarbhitta', 'Jhapa', 'Morang', 'Sunsari'];
+    const westNepal = ['Pokhara', 'Butwal', 'Nepalgunj', 'Dhangadhi', 'Mahendranagar', 'Kailali'];
+    const farWest = ['Dolpa', 'Jumla', 'Humla', 'Mugu', 'Kalikot', 'Bajura', 'Bajhang', 'Darchula', 'Baitadi', 'Dadeldhura'];
+    const midNepal = ['Kathmandu', 'Lalitpur', 'Bhaktapur', 'Chitwan', 'Hetauda', 'Narayangadh'];
+    
+    if (eastNepal.includes(start) && eastNepal.includes(end)) return 'Mahendra Highway (East)';
+    if (westNepal.includes(start) && westNepal.includes(end)) return 'Mahendra Highway (West)';
+    if (farWest.includes(start) && farWest.includes(end)) return 'Karnali Highway';
+    if (midNepal.includes(start) && midNepal.includes(end)) return 'Prithvi Highway / Tribhuvan Highway';
+    if (eastNepal.includes(start) || eastNepal.includes(end)) return 'Mahendra Highway + BP Highway';
+    if (farWest.includes(start) || farWest.includes(end)) return 'Karnali Highway + Mahendra Highway';
+    return 'Major Highway Network';
+}
+
+function drawRoute(startCoords, endCoords) {
+    if (window._routeLine) { map.removeLayer(window._routeLine); }
+    if (window._routeMarkers) { window._routeMarkers.forEach(m => map.removeLayer(m)); }
+    if (window._routeMidMarker) { map.removeLayer(window._routeMidMarker); }
+    
+    const latlngs = [[startCoords.lat, startCoords.lng], [endCoords.lat, endCoords.lng]];
+    window._routeLine = L.polyline(latlngs, { color: '#1C4620', weight: 5, opacity: 0.8, dashArray: '10, 8' }).addTo(map);
+    
+    window._routeMarkers = [
+        L.marker([startCoords.lat, startCoords.lng], { icon: L.divIcon({ html: '<div style="background:#2E7D32;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);"></div>', className: '', iconSize: [16, 16] }) }).bindPopup('📍 Start: ' + startCoords.name).addTo(map),
+        L.marker([endCoords.lat, endCoords.lng], { icon: L.divIcon({ html: '<div style="background:#C62828;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);"></div>', className: '', iconSize: [16, 16] }) }).bindPopup('📍 End: ' + endCoords.name).addTo(map)
+    ];
+    
+    const midLat = (startCoords.lat + endCoords.lat) / 2;
+    const midLng = (startCoords.lng + endCoords.lng) / 2;
+    const distance = turf.distance(turf.point([startCoords.lng, startCoords.lat]), turf.point([endCoords.lng, endCoords.lat]), {units: 'kilometers'});
+    
+    window._routeMidMarker = L.marker([midLat, midLng], {
+        icon: L.divIcon({
+            html: `<div style="background:rgba(28,70,32,0.9);color:white;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.2);">${distance.toFixed(1)} km</div>`,
+            className: '', iconSize: [60, 24], iconAnchor: [30, 12]
+        })
+    }).addTo(map);
+    
+    const bounds = L.latLngBounds(latlngs);
+    map.fitBounds(bounds, { padding: [80, 80], maxZoom: 12 });
+}
+
+// ─── RECORDS FUNCTIONS ───
+function openRecords() {
+    const recordsPage = document.getElementById('recordsPage');
+    const appBody = document.querySelector('.app-body');
+    const nav = document.querySelector('nav');
+    const hero = document.querySelector('.hero-section');
+    if (nav) nav.style.display = 'none';
+    if (hero) hero.style.display = 'none';
+    if (appBody) appBody.style.display = 'none';
+    recordsPage.style.display = 'block';
+    document.body.style.overflow = 'auto';
+    document.documentElement.style.overflow = 'auto';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    renderRecordsList();
+    updateRecordsStats();
+}
+
+function closeRecords() {
+    const recordsPage = document.getElementById('recordsPage');
+    const appBody = document.querySelector('.app-body');
+    const nav = document.querySelector('nav');
+    const hero = document.querySelector('.hero-section');
+    if (nav) nav.style.display = 'flex';
+    if (hero) hero.style.display = 'block';
+    if (appBody) appBody.style.display = 'flex';
+    recordsPage.style.display = 'none';
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+    window.scrollTo(0, 0);
+}
+
+function renderRecordsList() {
+    const wrap = document.getElementById('recordsList');
+    const filtered = recordsFilter === 'all' ? reports : reports.filter(r => r.safety === recordsFilter);
+    if (!filtered.length) {
+        wrap.innerHTML = `<div class="empty-state"><div class="ei">📋</div><p>No records ${recordsFilter !== 'all' ? 'with "' + recordsFilter + '" safety level' : 'yet'}.</p></div>`;
+        return;
+    }
+    let html = '';
+    const rev = filtered.slice().reverse();
+    for (const r of rev) {
+        const cls = r.safety;
+        const badgeCls = {safe:'badge-safe', moderate:'badge-moderate', danger:'badge-danger'}[r.safety] || 'badge-safe';
+        const badgeLabel = {safe:'Safe', moderate:'Moderate', danger:'Danger'}[r.safety] || 'Report';
+        const stars = '★'.repeat(r.stars) + '☆'.repeat(5 - r.stars);
+        html += `
+            <div class="report-card ${cls}" style="margin-bottom:8px;">
+                <div class="rc-header">
+                    <div class="rc-title">📍 ${r.district} District</div>
+                    <span class="rc-badge ${badgeCls}">${badgeLabel}</span>
+                </div>
+                <div class="rc-meta">${r.date} ${r.time} · ${r.name} · 🏛️ ${r.district}</div>
+                <div class="rc-types">🏷 ${r.types.join(' · ')}</div>
+                ${r.stars > 0 ? `<div class="rc-stars">${stars}</div>` : ''}
+                ${r.desc ? `<div class="rc-comment">"${r.desc.substring(0,100)}${r.desc.length > 100 ? '…' : ''}"</div>` : ''}
+                ${r.photo ? `<img src="${r.photo}" class="rc-photo" onclick="openLightbox('${r.photo}')"/>` : ''}
+                <div class="rc-actions">
+                    <button class="rc-fly" onclick="flyTo(${r.lat},${r.lng})">📍 Go</button>
+                    <button class="rc-del" onclick="askDelete(${r.id},'${r.district.replace(/'/g,"\\'")}')">🗑</button>
+                </div>
+            </div>
+        `;
+    }
+    wrap.innerHTML = html;
+}
+
+function filterRecords(filter, btn) {
+    recordsFilter = filter;
+    document.querySelectorAll('#recordsPage .filter-btn').forEach(b => {
+        if (b) { b.style.background = 'var(--white)'; b.style.color = 'var(--text)'; }
+    });
+    if (btn) { btn.style.background = 'var(--primary)'; btn.style.color = 'var(--white)'; }
+    renderRecordsList();
+}
+
+function updateRecordsStats() {
+    document.getElementById('rec-total').textContent = reports.length;
+    document.getElementById('rec-danger').textContent = reports.filter(r => r.safety === 'danger').length;
+    document.getElementById('rec-moderate').textContent = reports.filter(r => r.safety === 'moderate').length;
+    document.getElementById('rec-safe').textContent = reports.filter(r => r.safety === 'safe').length;
+}
+
+function openAbout() {
+    const aboutPage = document.getElementById('aboutPage');
+    const appBody = document.querySelector('.app-body');
+    const nav = document.querySelector('nav');
+    const hero = document.querySelector('.hero-section');
+    if (nav) nav.style.display = 'none';
+    if (hero) hero.style.display = 'none';
+    if (appBody) appBody.style.display = 'none';
+    aboutPage.style.display = 'block';
+    document.body.style.overflow = 'auto';
+    document.documentElement.style.overflow = 'auto';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function closeAbout() {
+    const aboutPage = document.getElementById('aboutPage');
+    const appBody = document.querySelector('.app-body');
+    const nav = document.querySelector('nav');
+    const hero = document.querySelector('.hero-section');
+    if (nav) nav.style.display = 'flex';
+    if (hero) hero.style.display = 'block';
+    if (appBody) appBody.style.display = 'flex';
+    aboutPage.style.display = 'none';
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+    window.scrollTo(0, 0);
+}
+
+// ─── SPATIAL TOOLS ───
+function activateTool(tool) {
+    deactivateTool();
+    currentTool = tool;
+    toolPoints = [];
+    clearToolLayers();
+    const info = document.getElementById('spatialInfo');
+    info.classList.add('show');
+    const titles = { distance: '📏 Distance Measurement', buffer: '⭕ 15km Buffer (Trekking Zone)', nearest: '📍 Nearest Location Finder', area: '📐 Area Calculation' };
+    const hints = { distance: 'Click two points on the map to measure distance', buffer: 'Click a point to create a 15km trekking zone', nearest: 'Click a point to find the nearest tourist place', area: 'Click 3+ points on the map to calculate area' };
+    document.getElementById('toolTitle').textContent = titles[tool] || 'Spatial Tool';
+    document.getElementById('toolHint').textContent = hints[tool] || 'Click on the map';
+    document.getElementById('toolResult').textContent = '⏳ Waiting for input...';
+    document.querySelectorAll('.spatial-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.spatial-btn').forEach(b => {
+        if (b.textContent.includes(tool === 'distance' ? 'Distance' : tool === 'buffer' ? '15km Buffer' : tool === 'nearest' ? 'Nearest' : 'Area')) {
+            b.classList.add('active');
+        }
+    });
+    map.getContainer().style.cursor = 'crosshair';
+    toast(`🛠️ ${titles[tool]} — Click on the map`);
+}
+
+function deactivateTool() {
+    currentTool = null;
+    toolPoints = [];
+    clearToolLayers();
+    document.getElementById('spatialInfo').classList.remove('show');
+    document.querySelectorAll('.spatial-btn').forEach(b => b.classList.remove('active'));
+    map.getContainer().style.cursor = '';
+}
+
+function clearToolLayers() {
+    toolLayers.forEach(l => map.removeLayer(l));
+    toolLayers = [];
+}
+
+map.on('click', function(e) {
+    if (currentTool) {
+        handleSpatialToolClick(e.latlng);
+        return;
+    }
+    pinLocation(e.latlng.lat, e.latlng.lng, '');
+});
+
+function handleSpatialToolClick(latlng) {
+    if (!currentTool) return;
+    const lat = latlng.lat, lng = latlng.lng;
+    const marker = L.circleMarker([lat, lng], { radius: 8, color: '#1565C0', fillColor: '#1565C0', fillOpacity: 0.8, weight: 2 }).addTo(map);
+    toolLayers.push(marker);
+    toolPoints.push([lat, lng]);
+    switch(currentTool) {
+        case 'distance':
+            if (toolPoints.length === 2) { measureDistance(toolPoints[0], toolPoints[1]); toolPoints = []; }
+            else { document.getElementById('toolResult').textContent = '📍 Point 1 selected — Click second point'; document.getElementById('toolHint').textContent = 'Click the second point to measure distance'; }
+            break;
+        case 'buffer': createBuffer(lat, lng); break;
+        case 'nearest': findNearest(lat, lng); break;
+        case 'area':
+            if (toolPoints.length >= 3) { calculateArea(toolPoints); toolPoints = []; }
+            else { document.getElementById('toolResult').textContent = `📍 ${toolPoints.length} point(s) selected — Need 3+ points`; document.getElementById('toolHint').textContent = `Click ${3 - toolPoints.length} more point(s)`; }
+            break;
+    }
+}
+
+function measureDistance(p1, p2) {
+    const from = turf.point([p1[1], p1[0]]);
+    const to = turf.point([p2[1], p2[0]]);
+    const dist = turf.distance(from, to, {units: 'kilometers'});
+    const distMeters = dist * 1000;
+    const line = L.polyline([p1, p2], {color: '#1565C0', weight: 4, dashArray: '8,6', opacity: 0.8}).addTo(map);
+    toolLayers.push(line);
+    const mid = [(p1[0]+p2[0])/2, (p1[1]+p2[1])/2];
+    const label = L.marker(mid, { icon: L.divIcon({ html: `<div style="background:#1565C0;color:#fff;padding:6px 12px;border-radius:6px;font-size:13px;font-weight:700;box-shadow:0 2px 12px rgba(0,0,0,0.2);">${dist.toFixed(3)} km (${distMeters.toFixed(0)} m)</div>`, className: '', iconSize: [140, 34], iconAnchor: [70, 17] }) }).addTo(map);
+    toolLayers.push(label);
+    document.getElementById('toolResult').textContent = `📏 Distance: ${dist.toFixed(3)} km (${distMeters.toFixed(0)} meters)`;
+    document.getElementById('toolHint').textContent = '✅ Distance measured! Click again to measure another.';
+    toast(`📏 Distance: ${dist.toFixed(2)} km`);
+    bufferData.push({ type: 'Distance Measurement', point1: `${p1[0].toFixed(4)}, ${p1[1].toFixed(4)}`, point2: `${p2[0].toFixed(4)}, ${p2[1].toFixed(4)}`, distance_km: dist.toFixed(3), distance_m: distMeters.toFixed(0) });
+    setTimeout(() => { if (currentTool === 'distance') { document.getElementById('toolHint').textContent = 'Click two points on the map to measure distance'; document.getElementById('toolResult').textContent = '⏳ Waiting for input...'; } }, 5000);
+}
+
+function createBuffer(lat, lng) {
+    const point = turf.point([lng, lat]);
+    const radius = 15;
+    const buffer = turf.buffer(point, radius, {units: 'kilometers'});
+    if (!buffer) { toast('❌ Buffer creation failed'); return; }
+    const coords = buffer.geometry.coordinates[0].map(c => [c[1], c[0]]);
+    const polygon = L.polygon(coords, { color: '#F57F17', weight: 3, fillColor: '#F57F17', fillOpacity: 0.12, dashArray: '6,4' }).addTo(map);
+    toolLayers.push(polygon);
+    const center = L.circleMarker([lat, lng], { radius: 8, color: '#F57F17', fillColor: '#F57F17', fillOpacity: 1 }).addTo(map);
+    toolLayers.push(center);
+    let within = 0;
+    PLACES.forEach(p => { const pt = turf.point([p.lng, p.lat]); if (turf.booleanPointInPolygon(pt, buffer)) within++; });
+    let reportsWithin = 0;
+    reports.forEach(r => { const pt = turf.point([r.lng, r.lat]); if (turf.booleanPointInPolygon(pt, buffer)) reportsWithin++; });
+    const area = turf.area(buffer);
+    const areaKm2 = area / 1000000;
+    document.getElementById('toolResult').textContent = `⭕ 15km Buffer: ${within} places, ${reportsWithin} reports, ${areaKm2.toFixed(1)} km²`;
+    toast(`⭕ 15km trekking zone created!`);
+    bufferData.push({ type: '15km Buffer Analysis', center: `${lat.toFixed(4)}, ${lng.toFixed(4)}`, area_km2: areaKm2.toFixed(2), places_found: within, reports_found: reportsWithin });
+    setTimeout(() => { if (currentTool === 'buffer') { document.getElementById('toolHint').textContent = 'Click a point to create a 15km trekking zone'; document.getElementById('toolResult').textContent = '⏳ Waiting for input...'; } }, 8000);
+}
+
+function findNearest(lat, lng) {
+    const userPoint = turf.point([lng, lat]);
+    let nearest = null;
+    let minDist = Infinity;
+    PLACES.forEach(place => { const placePoint = turf.point([place.lng, place.lat]); const dist = turf.distance(userPoint, placePoint, {units: 'kilometers'}); if (dist < minDist) { minDist = dist; nearest = place; } });
+    if (nearest) {
+        const line = L.polyline([[lat, lng], [nearest.lat, nearest.lng]], {color: '#6A1B9A', weight: 3, dashArray: '6,4', opacity: 0.8}).addTo(map);
+        toolLayers.push(line);
+        const highlight = L.circleMarker([nearest.lat, nearest.lng], {radius: 18, color: '#6A1B9A', fillColor: '#6A1B9A', fillOpacity: 0.2, weight: 3}).addTo(map);
+        toolLayers.push(highlight);
+        document.getElementById('toolResult').textContent = `📍 Nearest: ${nearest.name} (${minDist.toFixed(2)} km)`;
+        toast(`📍 Nearest: ${nearest.name} (${minDist.toFixed(2)} km)`);
+        bufferData.push({ type: 'Nearest Location', nearest_place: nearest.name, distance_km: minDist.toFixed(2), category: nearest.category, district: nearest.district });
+    } else { document.getElementById('toolResult').textContent = '❌ No places found nearby'; toast('❌ No places found nearby'); }
+}
+
+function calculateArea(points) {
+    if (points.length < 3) { toast('⚠️ Need at least 3 points for area calculation'); return; }
+    const coords = points.map(p => [p[1], p[0]]);
+    coords.push(coords[0]);
+    const polygon = turf.polygon([coords]);
+    const area = turf.area(polygon);
+    const areaKm2 = area / 1000000;
+    const areaHa = area / 10000;
+    const polyCoords = points.map(p => [p[0], p[1]]);
+    polyCoords.push(polyCoords[0]);
+    const poly = L.polygon(polyCoords, {color: '#E65100', weight: 3, fillColor: '#E65100', fillOpacity: 0.15, dashArray: '4,4'}).addTo(map);
+    toolLayers.push(poly);
+    const centroid = turf.centroid(polygon);
+    const label = L.marker([centroid.geometry.coordinates[1], centroid.geometry.coordinates[0]], { icon: L.divIcon({ html: `<div style="background:#E65100;color:#fff;padding:6px 12px;border-radius:6px;font-size:13px;font-weight:700;box-shadow:0 2px 12px rgba(0,0,0,0.2);">📐 ${areaKm2.toFixed(4)} km² (${areaHa.toFixed(1)} ha)</div>`, className: '', iconSize: [170, 34], iconAnchor: [85, 17] }) }).addTo(map);
+    toolLayers.push(label);
+    document.getElementById('toolResult').textContent = `📐 Area: ${areaKm2.toFixed(4)} km² (${areaHa.toFixed(1)} ha)`;
+    toast(`📐 Area: ${areaKm2.toFixed(2)} km²`);
+    bufferData.push({ type: 'Area Calculation', area_km2: areaKm2.toFixed(4), area_ha: areaHa.toFixed(1) });
+}
+
+console.log('✅ All features loaded successfully!');
+</script>
+</body>
+</html>
